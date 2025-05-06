@@ -196,21 +196,28 @@ const HealthChat = () => {
                                 ),
                                 code: ({node, inline, className, children, ...props}) => {
                                   const match = /language-(\w+)/.exec(className || '');
-                                  return !inline && match ? (
-                                    <SyntaxHighlighter
-                                      style={tomorrow}
-                                      language={match[1]}
-                                      PreTag="div"
-                                      className="rounded-md"
-                                      {...props}
-                                    >
-                                      {String(children).replace(/\n$/, '')}
-                                    </SyntaxHighlighter>
-                                  ) : (
-                                    <code className={className} {...props}>
-                                      {children}
-                                    </code>
-                                  )
+                                  // Check if it's NOT inline AND a language match was found
+                                  if (!inline && match && match[1]) {
+                                    return (
+                                      <SyntaxHighlighter
+                                        style={tomorrow as any}
+                                        language={match[1]}
+                                        PreTag="div"
+                                        className="rounded-md" // Keep or adjust as needed
+                                        {...props} // Spread remaining props
+                                      >
+                                        {String(children).replace(/\n$/, '')}
+                                      </SyntaxHighlighter>
+                                    );
+                                  } else {
+                                    // Handle inline code or code blocks without a language class
+                                    // Ensure className is passed if it exists, otherwise default styling applies
+                                    return (
+                                      <code className={className || 'inline-code'} {...props}> 
+                                        {children}
+                                      </code>
+                                    );
+                                  }
                                 }
                               }}
                             >
