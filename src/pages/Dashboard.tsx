@@ -58,6 +58,9 @@ const Dashboard = () => {
         if (metric.systolic_bp >= 140 || metric.diastolic_bp >= 90) {
           riskScore += 30;
           recommendations.push('Your blood pressure is high. Consider reducing salt intake and increasing exercise.');
+        } else if (metric.systolic_bp >= 130 || metric.diastolic_bp >= 85) {
+          riskScore += 20;
+          recommendations.push('Your blood pressure is elevated (Stage 1 hypertension). Consider lifestyle changes and consult your healthcare provider.');
         } else if (metric.systolic_bp < 90 || metric.diastolic_bp < 60) {
           riskScore += 20;
           recommendations.push('Your blood pressure is low. Stay hydrated and monitor for dizziness.');
@@ -370,17 +373,21 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                       <span>Blood Pressure</span>
                       <span className={`px-2 py-1 rounded text-xs ${
-                        healthMetrics[0].systolic_bp > 140 || healthMetrics[0].diastolic_bp > 90
-                          ? 'bg-amber-100 text-amber-800' 
-                          : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-green-100 text-green-800'
+                        healthMetrics[0].systolic_bp >= 140 || healthMetrics[0].diastolic_bp >= 90
+                          ? 'bg-amber-100 text-amber-800'
+                          : healthMetrics[0].systolic_bp >= 130 || healthMetrics[0].diastolic_bp >= 85
+                            ? 'bg-amber-100 text-amber-800'
+                            : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
                       }`}>
-                        {healthMetrics[0].systolic_bp > 140 || healthMetrics[0].diastolic_bp > 90
-                          ? 'Elevated'
-                          : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
-                            ? 'Low'
-                            : 'Normal'}
+                        {healthMetrics[0].systolic_bp >= 140 || healthMetrics[0].diastolic_bp >= 90
+                          ? 'High'
+                          : healthMetrics[0].systolic_bp >= 130 || healthMetrics[0].diastolic_bp >= 85
+                            ? 'Elevated'
+                            : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
+                              ? 'Low'
+                              : 'Normal'}
                       </span>
                     </div>
                   </div>

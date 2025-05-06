@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { HealthMetric, HealthAnalyticsResponse } from './types'
+import { HealthMetric, HealthAnalyticsResponse, Deno } from './types'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

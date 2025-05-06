@@ -194,7 +194,12 @@ const HealthChat = () => {
                                 blockquote: ({node, ...props}) => (
                                   <blockquote className="border-l-4 border-yellow-500 bg-yellow-50 p-3 my-4 rounded-r" {...props} />
                                 ),
-                                code: ({node, inline, className, children, ref, ...props}) => { // Destructure ref here
+                                code: ({node, inline, className, children, ...props}: {
+                                  node?: any;
+                                  inline?: boolean;
+                                  className?: string;
+                                  children: React.ReactNode;
+                                }) => {
                                   const match = /language-(\w+)/.exec(className || '');
                                   // Check if it's NOT inline AND a language match was found
                                   if (!inline && match && match[1]) {
