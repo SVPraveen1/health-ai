@@ -194,7 +194,7 @@ const HealthChat = () => {
                                 blockquote: ({node, ...props}) => (
                                   <blockquote className="border-l-4 border-yellow-500 bg-yellow-50 p-3 my-4 rounded-r" {...props} />
                                 ),
-                                code: ({node, inline, className, children, ...props}) => {
+                                code: ({node, inline, className, children, ref, ...props}) => { // Destructure ref here
                                   const match = /language-(\w+)/.exec(className || '');
                                   // Check if it's NOT inline AND a language match was found
                                   if (!inline && match && match[1]) {
@@ -204,7 +204,7 @@ const HealthChat = () => {
                                         language={match[1]}
                                         PreTag="div"
                                         className="rounded-md" // Keep or adjust as needed
-                                        {...props} // Spread remaining props
+                                        {...props} // Spread remaining props (ref is now excluded)
                                       >
                                         {String(children).replace(/\n$/, '')}
                                       </SyntaxHighlighter>
@@ -212,8 +212,9 @@ const HealthChat = () => {
                                   } else {
                                     // Handle inline code or code blocks without a language class
                                     // Ensure className is passed if it exists, otherwise default styling applies
+                                    // Exclude ref from being passed to the native code element as well
                                     return (
-                                      <code className={className || 'inline-code'} {...props}> 
+                                      <code className={className || 'inline-code'} {...props}>
                                         {children}
                                       </code>
                                     );
