@@ -1,22 +1,27 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ActivitySquare, AlertCircle, HeartPulse, ArrowRight, Loader, Brain } from "lucide-react";
+import { Scale, Ruler, ArrowRight, Loader, Brain, HeartPulse, Weight, Activity, AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { PredictionFormData, DiseaseRisk } from "@/types/health";
+
+interface PredictionResult {
+  results: string;
+  bmi: string;
+  risks: DiseaseRisk[];
+}
 
 const DiseasePrediction = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<PredictionFormData>({
     age: "",
     gender: "",
     height: "",
@@ -29,10 +34,11 @@ const DiseasePrediction = () => {
     smoker: "no",
     alcoholConsumption: "none",
     exerciseHours: "0-1",
-    familyHistory: [] as string[],
+    familyHistory: [],
   });
   
-  const [prediction, setPrediction] = useState<any>(null);
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [bmiCategory, setBmiCategory] = useState<string>("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -43,49 +49,82 @@ const DiseasePrediction = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const calculateBMI = (height: number, weight: number): number => {
+    const heightInM = height / 100;
+    return weight / (heightInM * heightInM);
+  };
+
+  const getBMICategory = (bmi: number): string => {
+    if (bmi < 18.5) return "Underweight";
+    if (bmi < 25) return "Normal weight";
+    if (bmi < 30) return "Overweight";
+    return "Obese";
+  };
+
+  const getBMIColor = (category: string): string => {
+    switch (category) {
+      case "Underweight": return "text-blue-500";
+      case "Normal weight": return "text-green-500";
+      case "Overweight": return "text-yellow-500";
+      case "Obese": return "text-red-500";
+      default: return "text-gray-500";
+    }
+  };
+
+  useEffect(() => {
+    if (formData.height && formData.weight) {
+      const bmi = calculateBMI(parseFloat(formData.height), parseFloat(formData.weight));
+      setBmiCategory(getBMICategory(bmi));
+    }
+  }, [formData.height, formData.weight]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Calculate BMI
-      const heightInM = parseFloat(formData.height) / 100;
-      const weightInKg = parseFloat(formData.weight);
-      const bmi = weightInKg / (heightInM * heightInM);
+      const bmi = calculateBMI(parseFloat(formData.height), parseFloat(formData.weight));
 
-      // Prepare prompt for Gemini AI
       const prompt = `
-        Please analyze the following health parameters and predict the risk for common diseases:
+        Please analyze these health parameters and provide detailed disease risk assessment:
         
+        Personal Information:
         - Age: ${formData.age} years
         - Gender: ${formData.gender}
-        - BMI: ${bmi.toFixed(1)} (Height: ${formData.height}cm, Weight: ${formData.weight}kg)
+        - BMI: ${bmi.toFixed(1)} (${getBMICategory(bmi)})
+        - Height: ${formData.height}cm
+        - Weight: ${formData.weight}kg
+        
+        Vital Signs:
         - Blood Pressure: ${formData.bpSystolic}/${formData.bpDiastolic} mmHg
         - Heart Rate: ${formData.heartRate} bpm
-        - Cholesterol Level: ${formData.cholesterol}
-        - Glucose Level: ${formData.glucose}
-        - Smoking Status: ${formData.smoker}
-        - Alcohol Consumption: ${formData.alcoholConsumption}
+        
+        Risk Factors:
+        - Cholesterol: ${formData.cholesterol}
+        - Glucose: ${formData.glucose}
+        - Smoking: ${formData.smoker}
+        - Alcohol: ${formData.alcoholConsumption}
         - Exercise: ${formData.exerciseHours} hours/week
-        - Family History: ${formData.familyHistory.join(", ") || "None specified"}
+        - Family History: ${formData.familyHistory.join(", ") || "None"}
         
         Please provide:
-        1. Percentage risk for diabetes, heart disease, stroke, hypertension
-        2. Key risk factors from the provided data
-        3. Specific recommendations to reduce risk
-        4. Present the results in a structured format with clear sections for each disease
+        1. Risk percentage for each condition (diabetes, heart disease, stroke, hypertension)
+        2. Specific risk factors identified for each condition
+        3. Detailed recommendations for risk reduction
+        4. Present each disease separately with clear risk levels
       `;
 
-      // Call Gemini AI via Edge Function
       const { data, error } = await supabase.functions.invoke('gemini-ai', {
         body: { prompt, type: 'disease-prediction' }
       });
 
       if (error) throw error;
 
+      const parsedRisks = parseAIResponse(data.result);
       setPrediction({
         results: data.result,
-        bmi: bmi.toFixed(1)
+        bmi: bmi.toFixed(1),
+        risks: parsedRisks
       });
     } catch (error: any) {
       console.error("Error in disease prediction:", error);
@@ -97,6 +136,28 @@ const DiseasePrediction = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const parseAIResponse = (response: string): DiseaseRisk[] => {
+    const risks: DiseaseRisk[] = [];
+    const diseases = ['Diabetes', 'Heart Disease', 'Stroke', 'Hypertension'];
+    
+    diseases.forEach(disease => {
+      const riskMatch = response.match(new RegExp(`${disease}[^0-9]*([0-9]+)%`));
+      const factorsMatch = response.match(new RegExp(`${disease}[^:]*factors:[^\n]*([^\n]*)`));
+      const recommendationMatch = response.match(new RegExp(`${disease}[^:]*recommendations?:[^\n]*([^\n]*)`));
+      
+      if (riskMatch) {
+        risks.push({
+          disease,
+          risk: parseInt(riskMatch[1]),
+          factors: factorsMatch ? factorsMatch[1].split(',').map(f => f.trim()) : [],
+          recommendation: recommendationMatch ? recommendationMatch[1].trim() : ''
+        });
+      }
+    });
+    
+    return risks;
   };
 
   const handleToggleFamilyHistory = (condition: string) => {
@@ -123,7 +184,7 @@ const DiseasePrediction = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">AI Disease Risk Assessment</h1>
           <p className="text-muted-foreground">
-            Enter your health parameters for an AI-powered disease risk prediction
+            Get personalized health insights based on your parameters
           </p>
         </div>
 
@@ -398,71 +459,112 @@ const DiseasePrediction = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Brain className="mr-2 h-5 w-5 text-primary" />
-                  AI Disease Risk Assessment Results
+                  AI Risk Assessment Results
                 </CardTitle>
                 <CardDescription>
-                  Based on your provided health parameters
+                  Based on your health parameters and risk factors
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Card className="bg-muted/50">
                       <CardContent className="p-4 text-center">
+                        <div className="flex items-center justify-center mb-2">
+                          <Scale className="h-5 w-5 text-primary" />
+                        </div>
                         <p className="text-sm font-medium text-muted-foreground">BMI</p>
                         <p className="text-2xl font-bold">{prediction.bmi}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {parseFloat(prediction.bmi) < 18.5 ? "Underweight" :
-                           parseFloat(prediction.bmi) < 25 ? "Normal" :
-                           parseFloat(prediction.bmi) < 30 ? "Overweight" : "Obese"}
+                        <p className={`text-xs ${getBMIColor(bmiCategory)}`}>
+                          {bmiCategory}
                         </p>
                       </CardContent>
                     </Card>
+                    
                     <Card className="bg-muted/50">
                       <CardContent className="p-4 text-center">
+                        <div className="flex items-center justify-center mb-2">
+                          <HeartPulse className="h-5 w-5 text-red-500" />
+                        </div>
                         <p className="text-sm font-medium text-muted-foreground">Blood Pressure</p>
                         <p className="text-2xl font-bold">{formData.bpSystolic}/{formData.bpDiastolic}</p>
                         <p className="text-xs text-muted-foreground">mmHg</p>
                       </CardContent>
                     </Card>
+
                     <Card className="bg-muted/50">
                       <CardContent className="p-4 text-center">
-                        <p className="text-sm font-medium text-muted-foreground">Heart Rate</p>
-                        <p className="text-2xl font-bold">{formData.heartRate}</p>
-                        <p className="text-xs text-muted-foreground">bpm</p>
+                        <div className="flex items-center justify-center mb-2">
+                          <Activity className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">Exercise</p>
+                        <p className="text-2xl font-bold">{formData.exerciseHours}</p>
+                        <p className="text-xs text-muted-foreground">hours/week</p>
                       </CardContent>
                     </Card>
+
                     <Card className="bg-muted/50">
                       <CardContent className="p-4 text-center">
+                        <div className="flex items-center justify-center mb-2">
+                          <Weight className="h-5 w-5 text-purple-500" />
+                        </div>
                         <p className="text-sm font-medium text-muted-foreground">Age</p>
                         <p className="text-2xl font-bold">{formData.age}</p>
                         <p className="text-xs text-muted-foreground">years</p>
                       </CardContent>
                     </Card>
                   </div>
-                  
-                  <Card className="border border-blue-200 bg-blue-50">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">AI Analysis</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="whitespace-pre-line text-sm">
-                        {prediction.results}
-                      </div>
-                    </CardContent>
-                  </Card>
+
+                  <div className="space-y-4">
+                    {prediction.risks.map((risk, index) => (
+                      <Card key={index} className={`border-l-4 ${
+                        risk.risk >= 70 ? 'border-l-red-500' :
+                        risk.risk >= 40 ? 'border-l-yellow-500' :
+                        'border-l-green-500'
+                      }`}>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg flex items-center justify-between">
+                            {risk.disease}
+                            <span className={`text-sm px-2 py-1 rounded ${
+                              risk.risk >= 70 ? 'bg-red-100 text-red-800' :
+                              risk.risk >= 40 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {risk.risk}% Risk
+                            </span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-sm font-medium">Key Risk Factors:</p>
+                              <ul className="list-disc list-inside text-sm text-muted-foreground pl-4">
+                                {risk.factors.map((factor, i) => (
+                                  <li key={i}>{factor}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">Recommendation:</p>
+                              <p className="text-sm text-muted-foreground">{risk.recommendation}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button variant="outline" onClick={() => setPrediction(null)}>
-                  Back to Form
+                  Start Over
                 </Button>
                 <Button>
-                  Save Results
+                  Download Report
                 </Button>
               </CardFooter>
             </Card>
-            
+
             <Alert className="border-primary/50 bg-primary/10">
               <HeartPulse className="h-4 w-4 text-primary" />
               <AlertTitle>Next Steps</AlertTitle>
@@ -472,23 +574,6 @@ const DiseasePrediction = () => {
             </Alert>
           </div>
         )}
-        
-        {/* HCI Principles Information */}
-        <div className="rounded-lg bg-muted p-6 mt-12">
-          <h3 className="text-lg font-medium mb-3">HCI Principles Demonstrated on this Page:</h3>
-          <ul className="list-disc pl-5 grid gap-3 md:grid-cols-2">
-            <li><strong>Progressive Disclosure:</strong> Complex form with clear sections and grouping</li>
-            <li><strong>Error Prevention:</strong> Input validation and clear error messages</li>
-            <li><strong>Affordance:</strong> Interactive elements clearly indicate they can be interacted with</li>
-            <li><strong>Feedback:</strong> Loading states and clear results presentation</li>
-            <li><strong>Mental Model Matching:</strong> Form follows logical health assessment process</li>
-            <li><strong>Accessibility:</strong> Labeled form controls and clear focus states</li>
-            <li><strong>Recognition over Recall:</strong> Dropdown options instead of free text</li>
-            <li><strong>Consistency:</strong> UI patterns consistent with rest of application</li>
-            <li><strong>Minimalist Design:</strong> Only necessary information shown at each step</li>
-            <li><strong>Flexibility and Efficiency:</strong> Form divided into logical sections</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

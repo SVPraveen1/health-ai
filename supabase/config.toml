@@ -1,5 +1,7 @@
-
 project_id = "mdxhnkcfyslqwgmywpjf"
 
 [functions.gemini-ai]
+verify_jwt = true
+
+[functions.health-analytics]
 verify_jwt = true

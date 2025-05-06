@@ -574,64 +574,7 @@ const Medication = () => {
         )}
 
         {/* Enhanced HCI Principles Information */}
-        <div className="rounded-lg bg-muted p-6 mt-12">
-          <h3 className="text-lg font-medium mb-3">HCI Principles Demonstrated on this Page:</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="bg-card rounded-md p-4 shadow-sm border">
-              <h4 className="font-medium mb-2">User Control & Visibility</h4>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><strong>Status Visibility:</strong> Clear display of medication status</li>
-                <li><strong>User Control:</strong> Ability to undo actions like marking medications</li>
-                <li><strong>Affordance:</strong> Visual cues that indicate how to interact</li>
-              </ul>
-            </div>
-            
-            <div className="bg-card rounded-md p-4 shadow-sm border">
-              <h4 className="font-medium mb-2">Error Prevention & Recovery</h4>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><strong>Form Validation:</strong> Prevents submission of incomplete information</li>
-                <li><strong>Graceful Error Handling:</strong> Clear feedback on issues</li>
-                <li><strong>Optimistic UI Updates:</strong> Fast response with fallback options</li>
-              </ul>
-            </div>
-            
-            <div className="bg-card rounded-md p-4 shadow-sm border">
-              <h4 className="font-medium mb-2">Design Consistency</h4>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><strong>Pattern Consistency:</strong> Similar interactions across components</li>
-                <li><strong>Visual Consistency:</strong> Unified style for related elements</li>
-                <li><strong>Behavioral Consistency:</strong> Predictable interaction patterns</li>
-              </ul>
-            </div>
-            
-            <div className="bg-card rounded-md p-4 shadow-sm border">
-              <h4 className="font-medium mb-2">Recognition Over Recall</h4>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><strong>Visible Options:</strong> All choices are presented rather than hidden</li>
-                <li><strong>Contextual Information:</strong> Related details shown together</li>
-                <li><strong>Persistent Context:</strong> User's place in workflow is maintained</li>
-              </ul>
-            </div>
-            
-            <div className="bg-card rounded-md p-4 shadow-sm border">
-              <h4 className="font-medium mb-2">Cognitive Ergonomics</h4>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><strong>Mental Model Alignment:</strong> Interface matches users' expectations</li>
-                <li><strong>Cognitive Load Management:</strong> Information chunking and spacing</li>
-                <li><strong>Gestalt Principles:</strong> Visual grouping of related elements</li>
-              </ul>
-            </div>
-            
-            <div className="bg-card rounded-md p-4 shadow-sm border">
-              <h4 className="font-medium mb-2">Hick's Law & Fitts' Law</h4>
-              <ul className="list-disc pl-5 space-y-1 text-sm">
-                <li><strong>Decision Simplification:</strong> Limited, clearly defined choices</li>
-                <li><strong>Target Size Optimization:</strong> Important buttons are properly sized</li>
-                <li><strong>Spatial Layout:</strong> Common actions positioned for easy access</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
   );

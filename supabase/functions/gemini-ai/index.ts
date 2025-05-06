@@ -1,9 +1,24 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+export const formatHealthResponse = (text: string) => {
+  const sections = text.split('\n\n');
+  return sections.map(section => {
+    if (section.startsWith('•')) {
+      return `${section}`; // Keep bullet points
+    }
+    if (section.toLowerCase().includes('warning') || section.toLowerCase().includes('caution')) {
+      return `> ⚠️ ${section}`; // Format warnings
+    }
+    if (section.match(/^\d+\./)) {
+      return `\n${section}`; // Format numbered lists
+    }
+    return section;
+  }).join('\n\n');
 };
 
 serve(async (req) => {
@@ -38,6 +53,18 @@ serve(async (req) => {
         systemPrompt = 'You are a helpful healthcare chatbot. Provide concise and accurate health information. Always include a disclaimer that this is not medical advice and serious concerns require professional medical attention.';
     }
 
+    const formattedPrompt = `
+Format the response using markdown with:
+- Clear section headings using ###
+- Bullet points for lists
+- **Bold** for important terms
+- > Blockquotes for warnings or important notes
+- Tables where relevant
+- Simple, clear language
+
+Question: ${systemPrompt}\n\n${prompt}
+`;
+
     // Call Gemini API
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
@@ -49,7 +76,7 @@ serve(async (req) => {
           {
             role: "user",
             parts: [
-              { text: systemPrompt + "\n\n" + prompt }
+              { text: formattedPrompt }
             ]
           }
         ],
@@ -92,8 +119,10 @@ serve(async (req) => {
       throw new Error("Failed to parse Gemini API response");
     }
 
+    const formattedResponse = formatHealthResponse(result);
+
     return new Response(
-      JSON.stringify({ result }),
+      JSON.stringify({ result: formattedResponse }),
       {
         headers: { 
           'Content-Type': 'application/json',

@@ -1,0 +1,16 @@
+[deploy]
+check_on_deploy = true
+
+[build]
+include = ["**/*.ts"]
+exclude = ["node_modules", ".vscode"]
+
+[build.deno]
+unstable = true
+
+[[plugins]]
+package = "supabase_edge_functions"
+
+[functions]
+[functions.health-analytics]
+verify_jwt = true

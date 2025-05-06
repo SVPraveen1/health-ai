@@ -1,52 +1,83 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, AlertCircle, Loader, ArrowRight, Brain } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Bot, Share, AlertCircle, Check, ArrowRight, Loader, Brain } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
+
+interface SymptomResult {
+  possibleConditions: Array<{
+    name: string;
+    probability: string;
+    severity: "low" | "medium" | "high";
+    description: string;
+    commonSymptoms: string[];
+  }>;
+  recommendation: string;
+  urgency: "non-urgent" | "soon" | "urgent";
+  aiResponse?: string;
+  followUpQuestions?: string[];
+}
 
 const SymptomChecker = () => {
-  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [symptoms, setSymptoms] = useState("");
   const [duration, setDuration] = useState("");
   const [severity, setSeverity] = useState("5");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<null | {
-    possibleConditions: Array<{name: string, probability: string, severity: "low" | "medium" | "high"}>;
-    recommendation: string;
-    urgency: "non-urgent" | "soon" | "urgent";
-    aiResponse?: string;
-  }>(null);
+  const [results, setResults] = useState<SymptomResult | null>(null);
+  const [additionalInfo, setAdditionalInfo] = useState({
+    age: "",
+    gender: "",
+    medicalHistory: [] as string[],
+    currentMedications: "",
+    recentTravel: "no",
+    allergies: ""
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // Prepare prompt for Gemini AI
+      // Enhanced prompt for more accurate analysis
       const prompt = `
-        I'm experiencing the following symptoms:
+        Patient Symptoms Analysis Request:
+
+        Primary Symptoms:
         ${symptoms}
         
-        Additional information:
+        Additional Information:
         - Duration: ${duration}
         - Severity (1-10): ${severity}
+        - Age: ${additionalInfo.age}
+        - Gender: ${additionalInfo.gender}
+        - Medical History: ${additionalInfo.medicalHistory.join(", ")}
+        - Current Medications: ${additionalInfo.currentMedications}
+        - Recent Travel: ${additionalInfo.recentTravel}
+        - Allergies: ${additionalInfo.allergies}
         
-        Please analyze these symptoms and provide:
-        1. A list of possible conditions with probability (high, medium, low) and severity level
-        2. Recommendations for next steps
-        3. Urgency level (non-urgent, see doctor soon, urgent/seek immediate care)
+        Please provide:
+        1. List of possible conditions with:
+           - Probability (high, medium, low)
+           - Severity level
+           - Brief description
+           - Common symptoms
+        2. Urgency level (non-urgent, see doctor soon, urgent/immediate care)
+        3. Specific recommendations
+        4. Follow-up questions for better diagnosis
+        
+        Format the response clearly with sections for each condition.
       `;
       
-      // Call Gemini AI via Edge Function
       const { data, error } = await supabase.functions.invoke('gemini-ai', {
         body: { prompt, type: 'symptom-check' }
       });
@@ -56,34 +87,33 @@ const SymptomChecker = () => {
       // Process AI response
       const aiResponse = data.result;
       
-      // For demonstration, extract structured data from the AI response
-      // In a real app, you would parse the AI's response more robustly
-      let urgency = "non-urgent";
+      // Extract urgency level
+      let urgency: "non-urgent" | "soon" | "urgent" = "non-urgent";
       if (aiResponse.toLowerCase().includes("urgent") || aiResponse.toLowerCase().includes("emergency") || aiResponse.toLowerCase().includes("immediate")) {
         urgency = "urgent";
       } else if (aiResponse.toLowerCase().includes("soon") || aiResponse.toLowerCase().includes("within days")) {
         urgency = "soon";
       }
       
-      // Extract possible conditions (simplified for demo)
-      const possibleConditions = [
-        { name: "Common Cold", probability: "High (75%)", severity: "low" },
-        { name: "Seasonal Allergies", probability: "Medium (45%)", severity: "low" },
-        { name: "Sinus Infection", probability: "Low (20%)", severity: "medium" }
-      ];
+      // Extract possible conditions with enhanced information
+      const conditions = extractConditionsFromResponse(aiResponse);
+      
+      // Extract follow-up questions
+      const followUpQuestions = extractFollowUpQuestions(aiResponse);
       
       // Extract recommendation
       const recommendation = aiResponse.split("\n\n").find((line: string) => 
         line.toLowerCase().includes("recommend") || 
         line.toLowerCase().includes("suggestion") || 
         line.toLowerCase().includes("advice")
-      ) || "Based on your symptoms, please consult a healthcare professional for proper diagnosis.";
+      ) || "Please consult a healthcare professional for proper evaluation.";
       
       setResults({
-        possibleConditions,
+        possibleConditions: conditions,
         recommendation,
-        urgency: urgency as "non-urgent" | "soon" | "urgent",
-        aiResponse
+        urgency,
+        aiResponse,
+        followUpQuestions
       });
       
       setStep(2);
@@ -97,6 +127,67 @@ const SymptomChecker = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const extractConditionsFromResponse = (response: string): Array<{
+    name: string;
+    probability: string;
+    severity: "low" | "medium" | "high";
+    description: string;
+    commonSymptoms: string[];
+  }> => {
+    const conditions = [];
+    const conditionBlocks = response.split(/\d+\.\s+/).filter(block => block.trim());
+    
+    for (const block of conditionBlocks) {
+      if (block.includes(":")) {
+        const name = block.split(":")[0].trim();
+        const details = block.toLowerCase();
+        
+        let probability = "medium";
+        if (details.includes("high probability") || details.includes("likely")) {
+          probability = "high";
+        } else if (details.includes("low probability") || details.includes("unlikely")) {
+          probability = "low";
+        }
+        
+        let severity: "low" | "medium" | "high" = "medium";
+        if (details.includes("severe") || details.includes("serious")) {
+          severity = "high";
+        } else if (details.includes("mild") || details.includes("minor")) {
+          severity = "low";
+        }
+        
+        const descriptionMatch = block.match(/description:([^]*?)(?=common symptoms:|$)/i);
+        const description = descriptionMatch ? descriptionMatch[1].trim() : "";
+        
+        const symptomsMatch = block.match(/common symptoms:([^]*?)(?=\n\n|$)/i);
+        const commonSymptoms = symptomsMatch 
+          ? symptomsMatch[1].split(",").map(s => s.trim()).filter(s => s)
+          : [];
+        
+        conditions.push({
+          name,
+          probability,
+          severity,
+          description,
+          commonSymptoms
+        });
+      }
+    }
+    
+    return conditions;
+  };
+
+  const extractFollowUpQuestions = (response: string): string[] => {
+    const questionsMatch = response.match(/follow-?up questions?:([^]*?)(?=\n\n|$)/i);
+    if (questionsMatch) {
+      return questionsMatch[1]
+        .split(/\d+\.\s+/)
+        .map(q => q.trim())
+        .filter(q => q && q.endsWith("?"));
+    }
+    return [];
   };
 
   const renderStep = () => {
@@ -121,33 +212,94 @@ const SymptomChecker = () => {
                 The more details you provide, the more accurate our AI can be.
               </p>
             </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="duration" className="text-sm font-medium">
+                  How long have you been experiencing these symptoms?
+                </Label>
+                <Input 
+                  id="duration"
+                  placeholder="e.g., 3 days, 1 week"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Severity (1-10)
+                </Label>
+                <div className="pt-2">
+                  <Slider
+                    value={[parseInt(severity)]}
+                    onValueChange={([value]) => setSeverity(value.toString())}
+                    min={1}
+                    max={10}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-muted-foreground">Mild</span>
+                    <span className="text-xs font-medium">{severity}</span>
+                    <span className="text-xs text-muted-foreground">Severe</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="age">Age</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  placeholder="Years"
+                  value={additionalInfo.age}
+                  onChange={(e) => setAdditionalInfo(prev => ({ ...prev, age: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select
+                  value={additionalInfo.gender}
+                  onValueChange={(value) => setAdditionalInfo(prev => ({ ...prev, gender: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="duration" className="text-sm font-medium">
-                How long have you been experiencing these symptoms?
-              </Label>
-              <Input 
-                id="duration" 
-                placeholder="e.g., 3 days" 
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                required 
+              <Label htmlFor="medications">Current Medications</Label>
+              <Input
+                id="medications"
+                placeholder="List any medications you're currently taking"
+                value={additionalInfo.currentMedications}
+                onChange={(e) => setAdditionalInfo(prev => ({ ...prev, currentMedications: e.target.value }))}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="severity" className="text-sm font-medium">
-                On a scale of 1-10, how severe are your symptoms?
-              </Label>
-              <Input 
-                id="severity" 
-                type="number" 
-                min="1" 
-                max="10" 
-                placeholder="e.g., 5" 
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value)}
-                required 
+              <Label htmlFor="allergies">Allergies</Label>
+              <Input
+                id="allergies"
+                placeholder="List any known allergies"
+                value={additionalInfo.allergies}
+                onChange={(e) => setAdditionalInfo(prev => ({ ...prev, allergies: e.target.value }))}
               />
             </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
@@ -155,62 +307,47 @@ const SymptomChecker = () => {
                   Analyzing Symptoms...
                 </>
               ) : (
-                <>Check Symptoms</>
+                <>
+                  Analyze Symptoms
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
               )}
             </Button>
-            
-            <Alert variant="destructive" className="mt-4">
+
+            <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Important Notice</AlertTitle>
               <AlertDescription>
-                This tool is not a replacement for professional medical advice. In case of emergency, call 911 or your local emergency number immediately.
+                This tool is not a replacement for professional medical advice. In case of emergency, call emergency services immediately.
               </AlertDescription>
             </Alert>
           </form>
         );
+
       case 2:
         return results && (
           <div className="space-y-6">
-            <div className="rounded-lg bg-muted p-4">
-              <h3 className="font-medium mb-2">Possible Conditions:</h3>
-              <ul className="space-y-4">
-                {results.possibleConditions.map((condition, index) => (
-                  <li key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className={`h-3 w-3 rounded-full ${
-                          condition.severity === "low" ? "bg-green-500" : 
-                          condition.severity === "medium" ? "bg-yellow-500" : "bg-red-500"
-                        }`}
-                      />
-                      <span>{condition.name}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{condition.probability}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Alert className={`
-              ${results.urgency === "non-urgent" ? "border-green-500" : 
-                results.urgency === "soon" ? "border-yellow-500" : "border-red-500"}
-            `}>
+            <Alert className={`border-2 ${
+              results.urgency === "urgent" ? "border-red-500 bg-red-50" :
+              results.urgency === "soon" ? "border-yellow-500 bg-yellow-50" :
+              "border-green-500 bg-green-50"
+            }`}>
               <div className="flex items-center gap-2">
-                <AlertTitle className="flex items-center gap-2">
-                  {results.urgency === "non-urgent" ? (
+                <AlertTitle className="flex items-center gap-2 text-lg">
+                  {results.urgency === "urgent" ? (
                     <>
-                      <Check className="h-4 w-4 text-green-500" />
-                      <span>Non-urgent</span>
+                      <AlertCircle className="h-5 w-5 text-red-500" />
+                      <span className="text-red-700">Urgent: Seek immediate medical attention</span>
                     </>
                   ) : results.urgency === "soon" ? (
                     <>
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                      <span>See doctor soon</span>
+                      <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      <span className="text-yellow-700">Consult a doctor soon</span>
                     </>
                   ) : (
                     <>
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                      <span>Urgent: Seek medical attention</span>
+                      <Check className="h-5 w-5 text-green-500" />
+                      <span className="text-green-700">Non-urgent</span>
                     </>
                   )}
                 </AlertTitle>
@@ -220,34 +357,91 @@ const SymptomChecker = () => {
               </AlertDescription>
             </Alert>
 
-            {results.aiResponse && (
-              <Card className="border border-blue-200 bg-blue-50">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center text-lg">
-                    <Brain className="mr-2 h-5 w-5 text-blue-500" />
-                    AI Detailed Analysis
-                  </CardTitle>
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Possible Conditions</h3>
+              <div className="grid gap-4">
+                {results.possibleConditions.map((condition, index) => (
+                  <Card key={index} className={`border-l-4 ${
+                    condition.severity === "high" ? "border-l-red-500" :
+                    condition.severity === "medium" ? "border-l-yellow-500" :
+                    "border-l-green-500"
+                  }`}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg flex items-center justify-between">
+                        {condition.name}
+                        <span className={`text-sm px-2 py-1 rounded ${
+                          condition.probability === "high" ? "bg-red-100 text-red-800" :
+                          condition.probability === "medium" ? "bg-yellow-100 text-yellow-800" :
+                          "bg-green-100 text-green-800"
+                        }`}>
+                          {condition.probability} probability
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          {condition.description}
+                        </p>
+                        {condition.commonSymptoms.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">Common Symptoms:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {condition.commonSymptoms.map((symptom, i) => (
+                                <span
+                                  key={i}
+                                  className="text-xs bg-muted px-2 py-1 rounded-full"
+                                >
+                                  {symptom}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {results.followUpQuestions && results.followUpQuestions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Follow-up Questions</CardTitle>
+                  <CardDescription>
+                    Consider these questions for a more accurate assessment
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="whitespace-pre-line text-sm">
-                    {results.aiResponse}
-                  </div>
+                  <ul className="list-disc list-inside space-y-2">
+                    {results.followUpQuestions.map((question, index) => (
+                      <li key={index} className="text-sm text-muted-foreground">
+                        {question}
+                      </li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
             )}
 
-            <div className="flex flex-col space-y-2">
-              <Button onClick={() => setStep(1)}>Check New Symptoms</Button>
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={() => setStep(1)}>
+                Start Over
+              </Button>
               
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline">Share Results With Doctor</Button>
+                  <Button>
+                    <Share className="mr-2 h-4 w-4" />
+                    Share Results
+                  </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Share Your Results</DialogTitle>
                     <DialogDescription>
-                      Generate a detailed report to share with your healthcare provider.
+                      Generate a detailed report to share with your healthcare provider
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
@@ -257,8 +451,17 @@ const SymptomChecker = () => {
                 </DialogContent>
               </Dialog>
             </div>
+
+            <Alert>
+              <Brain className="h-4 w-4" />
+              <AlertTitle>AI-Powered Analysis</AlertTitle>
+              <AlertDescription>
+                This analysis is generated by AI based on the symptoms you described. Always consult with a healthcare professional for proper diagnosis and treatment.
+              </AlertDescription>
+            </Alert>
           </div>
         );
+
       default:
         return null;
     }
@@ -270,7 +473,7 @@ const SymptomChecker = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">AI Symptom Checker</h1>
           <p className="text-muted-foreground">
-            Describe your symptoms for an AI-powered analysis and recommendations
+            Get an AI-powered analysis of your symptoms and recommendations
           </p>
         </div>
 
@@ -278,28 +481,11 @@ const SymptomChecker = () => {
           <CardHeader>
             <CardTitle>Health Assessment</CardTitle>
             <CardDescription>
-              Our AI will analyze your symptoms and provide possible conditions and recommendations.
+              Describe your symptoms for an AI-powered analysis and recommendations
             </CardDescription>
           </CardHeader>
           <CardContent>{renderStep()}</CardContent>
         </Card>
-
-        {/* HCI Principles Information */}
-        <div className="rounded-lg bg-muted p-6 mt-12">
-          <h3 className="text-lg font-medium mb-3">HCI Principles Demonstrated on this Page:</h3>
-          <ul className="list-disc pl-5 grid gap-3 md:grid-cols-2">
-            <li><strong>Progressive Disclosure:</strong> Multi-step form revealing information gradually</li>
-            <li><strong>Visibility of System Status:</strong> Loading indicators and clear state transitions</li>
-            <li><strong>Error Prevention:</strong> Clear warnings about medical advice limitations</li>
-            <li><strong>Scarcity (Cialdini):</strong> Urgency indicators to prompt action when needed</li>
-            <li><strong>Recognition over Recall:</strong> Clear form labels and helpful placeholder text</li>
-            <li><strong>Color Psychology:</strong> Red for urgent, yellow for warning, green for safe</li>
-            <li><strong>Authority (Cialdini):</strong> Professional medical language to establish trust</li>
-            <li><strong>Feedback Loops:</strong> Clear responses after submission with next steps</li>
-            <li><strong>Accessibility:</strong> Labeled form controls and clear focus states</li>
-            <li><strong>Mental Model Matching:</strong> Interface follows familiar medical consultation pattern</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

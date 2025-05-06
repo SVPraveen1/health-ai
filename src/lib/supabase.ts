@@ -120,3 +120,5 @@ export const addHealthMetric = async (metric: any, userId: string) => {
     return { data: null, error };
   }
 };
+
+export { supabase };

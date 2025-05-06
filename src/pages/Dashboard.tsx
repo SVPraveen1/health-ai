@@ -1,16 +1,16 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Heart, Activity, Plus, Calendar, ChartLine, Save, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { addHealthMetric, getHealthMetrics } from "@/lib/supabase";
 import { toast } from "@/components/ui/use-toast";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import HealthInsights from "@/components/HealthInsights";
+import { NotificationCenter } from "@/components/Notifications";
 
 interface HealthMetric {
   id: string;
@@ -19,6 +19,10 @@ interface HealthMetric {
   diastolic_bp: number;
   created_at: string;
   user_id: string;
+  analytics?: {
+    risk_score?: number;
+    recommendations?: string[];
+  };
 }
 
 const Dashboard = () => {
@@ -32,6 +36,68 @@ const Dashboard = () => {
     diastolic_bp: ""
   });
 
+  const analyzeHealthData = async (metrics: HealthMetric[]) => {
+    try {
+      // Process metrics directly instead of calling edge function
+      const analytics: { [key: string]: { risk_score: number; recommendations: string[] } } = {};
+
+      metrics.forEach((metric) => {
+        let riskScore = 0;
+        const recommendations: string[] = [];
+
+        // Heart rate analysis
+        if (metric.heart_rate > 100) {
+          riskScore += 20;
+          recommendations.push('Your heart rate is elevated. Consider stress reduction techniques and consult your doctor.');
+        } else if (metric.heart_rate < 60) {
+          riskScore += 15;
+          recommendations.push('Your heart rate is lower than normal. Monitor for symptoms like dizziness or fatigue.');
+        }
+
+        // Blood pressure analysis
+        if (metric.systolic_bp >= 140 || metric.diastolic_bp >= 90) {
+          riskScore += 30;
+          recommendations.push('Your blood pressure is high. Consider reducing salt intake and increasing exercise.');
+        } else if (metric.systolic_bp < 90 || metric.diastolic_bp < 60) {
+          riskScore += 20;
+          recommendations.push('Your blood pressure is low. Stay hydrated and monitor for dizziness.');
+        }
+
+        // General recommendations based on risk score
+        if (riskScore >= 50) {
+          recommendations.push('Consider scheduling a check-up with your healthcare provider.');
+        }
+
+        if (recommendations.length === 0) {
+          recommendations.push('Your readings are within normal ranges. Keep up the good work!');
+        }
+
+        analytics[metric.id] = {
+          risk_score: Math.min(100, riskScore),
+          recommendations
+        };
+      });
+
+      // Update metrics with analytics data
+      const updatedMetrics = metrics.map(metric => ({
+        ...metric,
+        analytics: analytics[metric.id]
+      }));
+
+      setHealthMetrics(updatedMetrics);
+    } catch (error: any) {
+      console.error("Error analyzing health data:", {
+        message: error.message,
+        error
+      });
+      toast({
+        title: "Analytics Error",
+        description: error.message || "Failed to analyze health data",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     const loadHealthMetrics = async () => {
       if (user) {
@@ -41,6 +107,9 @@ const Dashboard = () => {
           const { data, error } = await getHealthMetrics(user.id);
           if (error) throw error;
           setHealthMetrics(data || []);
+          if (data && data.length > 0) {
+            await analyzeHealthData(data);
+          }
         } catch (error: any) {
           console.error("Error loading health metrics:", error);
           setError("Failed to load health metrics. Please try again later.");
@@ -95,6 +164,9 @@ const Dashboard = () => {
       // Refresh metrics
       const { data } = await getHealthMetrics(user.id);
       setHealthMetrics(data || []);
+      if (data && data.length > 0) {
+        await analyzeHealthData(data);
+      }
 
       // Reset form
       setNewMetric({
@@ -123,27 +195,83 @@ const Dashboard = () => {
     diastolicBP: metric.diastolic_bp
   })).reverse();
 
-  // Add a ref selector for tabs
-  const navigateToAddTab = () => {
-    const addTab = document.querySelector('[data-value="add"]') as HTMLElement;
-    if (addTab) {
-      addTab.click();
-    }
-  };
-
   return (
     <div className="container px-4 md:px-6 py-8">
-      <h1 className="text-3xl font-bold mb-6">Your Health Dashboard</h1>
-      
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="metrics">Health Metrics</TabsTrigger>
-          <TabsTrigger value="add">Add New Reading</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Your Health Dashboard</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Reading
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Health Reading</DialogTitle>
+              <DialogDescription>
+                Record your current heart rate and blood pressure
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              <div className="grid gap-2">
+                <Label htmlFor="heart_rate">Heart Rate (BPM)</Label>
+                <Input
+                  id="heart_rate"
+                  name="heart_rate"
+                  type="number"
+                  placeholder="e.g., 72"
+                  value={newMetric.heart_rate}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label>Blood Pressure (mmHg)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="systolic_bp" className="text-sm">Systolic (top)</Label>
+                    <Input
+                      id="systolic_bp"
+                      name="systolic_bp"
+                      type="number"
+                      placeholder="e.g., 120"
+                      value={newMetric.systolic_bp}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="diastolic_bp" className="text-sm">Diastolic (bottom)</Label>
+                    <Input
+                      id="diastolic_bp"
+                      name="diastolic_bp"
+                      type="number"
+                      placeholder="e.g., 80"
+                      value={newMetric.diastolic_bp}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <Button type="submit" className="w-full">
+                <Save className="mr-2 h-4 w-4" />
+                Save Reading
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Main Dashboard Grid */}
+      <div className="grid gap-6 md:grid-cols-12">
+        {/* Health Metrics Section - 8 columns */}
+        <div className="md:col-span-8 space-y-6">
+          {/* Latest Readings Overview */}
+          <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center">
@@ -167,16 +295,16 @@ const Dashboard = () => {
                   <p className="text-muted-foreground">No data available</p>
                 )}
               </CardContent>
-              <CardFooter className="text-sm text-muted-foreground">
-                {healthMetrics.length > 0 && (
+              {healthMetrics.length > 0 && (
+                <CardFooter className="text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Calendar className="mr-1 h-4 w-4" />
                     {formatDate(healthMetrics[0].created_at)}
                   </div>
-                )}
-              </CardFooter>
+                </CardFooter>
+              )}
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center">
@@ -200,16 +328,16 @@ const Dashboard = () => {
                   <p className="text-muted-foreground">No data available</p>
                 )}
               </CardContent>
-              <CardFooter className="text-sm text-muted-foreground">
-                {healthMetrics.length > 0 && (
+              {healthMetrics.length > 0 && (
+                <CardFooter className="text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Calendar className="mr-1 h-4 w-4" />
                     {formatDate(healthMetrics[0].created_at)}
                   </div>
-                )}
-              </CardFooter>
+                </CardFooter>
+              )}
             </Card>
-            
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle>Health Status</CardTitle>
@@ -260,78 +388,10 @@ const Dashboard = () => {
                   <p className="text-muted-foreground">No data available</p>
                 )}
               </CardContent>
-              <CardFooter>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add New Reading
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Quick Add Health Reading</DialogTitle>
-                      <DialogDescription>
-                        Enter your current health metrics
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="quick-heart_rate">Heart Rate (BPM)</Label>
-                        <Input
-                          id="quick-heart_rate"
-                          name="heart_rate"
-                          type="number"
-                          placeholder="e.g., 72"
-                          value={newMetric.heart_rate}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="grid gap-2">
-                        <Label>Blood Pressure (mmHg)</Label>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="quick-systolic_bp" className="text-sm">Systolic (top)</Label>
-                            <Input
-                              id="quick-systolic_bp"
-                              name="systolic_bp"
-                              type="number"
-                              placeholder="e.g., 120"
-                              value={newMetric.systolic_bp}
-                              onChange={handleInputChange}
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="quick-diastolic_bp" className="text-sm">Diastolic (bottom)</Label>
-                            <Input
-                              id="quick-diastolic_bp"
-                              name="diastolic_bp"
-                              type="number"
-                              placeholder="e.g., 80"
-                              value={newMetric.diastolic_bp}
-                              onChange={handleInputChange}
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <Button type="submit" className="w-full">
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Reading
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </CardFooter>
             </Card>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="metrics">
+
+          {/* Health Metrics History */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -380,225 +440,47 @@ const Dashboard = () => {
                 </div>
               )}
             </CardContent>
-            <CardFooter>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add New Reading
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Quick Add Health Reading</DialogTitle>
-                    <DialogDescription>
-                      Enter your current health metrics
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="metrics-heart_rate">Heart Rate (BPM)</Label>
-                      <Input
-                        id="metrics-heart_rate"
-                        name="heart_rate"
-                        type="number"
-                        placeholder="e.g., 72"
-                        value={newMetric.heart_rate}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label>Blood Pressure (mmHg)</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="metrics-systolic_bp" className="text-sm">Systolic (top)</Label>
-                          <Input
-                            id="metrics-systolic_bp"
-                            name="systolic_bp"
-                            type="number"
-                            placeholder="e.g., 120"
-                            value={newMetric.systolic_bp}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="metrics-diastolic_bp" className="text-sm">Diastolic (bottom)</Label>
-                          <Input
-                            id="metrics-diastolic_bp"
-                            name="diastolic_bp"
-                            type="number"
-                            placeholder="e.g., 80"
-                            value={newMetric.diastolic_bp}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Button type="submit" className="w-full">
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Reading
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </CardFooter>
           </Card>
-          
+
           {healthMetrics.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-3">Recent Readings</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted">
-                      <th className="p-2 text-left">Date</th>
-                      <th className="p-2 text-left">Heart Rate (BPM)</th>
-                      <th className="p-2 text-left">Blood Pressure (mmHg)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {healthMetrics.slice(0, 10).map((metric) => (
-                      <tr key={metric.id} className="border-b">
-                        <td className="p-2">{formatDate(metric.created_at)}</td>
-                        <td className="p-2">{metric.heart_rate}</td>
-                        <td className="p-2">{metric.systolic_bp}/{metric.diastolic_bp}</td>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Readings</CardTitle>
+                <CardDescription>Your last 10 health measurements</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="p-2 text-left">Date</th>
+                        <th className="p-2 text-left">Heart Rate (BPM)</th>
+                        <th className="p-2 text-left">Blood Pressure (mmHg)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="add">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Health Reading</CardTitle>
-              <CardDescription>
-                Record your current heart rate and blood pressure
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit}>
-                <div className="grid gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="heart_rate">Heart Rate (BPM)</Label>
-                    <Input
-                      id="heart_rate"
-                      name="heart_rate"
-                      type="number"
-                      placeholder="e.g., 72"
-                      value={newMetric.heart_rate}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label>Blood Pressure (mmHg)</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="systolic_bp" className="text-sm">Systolic (top number)</Label>
-                        <Input
-                          id="systolic_bp"
-                          name="systolic_bp"
-                          type="number"
-                          placeholder="e.g., 120"
-                          value={newMetric.systolic_bp}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="diastolic_bp" className="text-sm">Diastolic (bottom number)</Label>
-                        <Input
-                          id="diastolic_bp"
-                          name="diastolic_bp"
-                          type="number"
-                          placeholder="e.g., 80"
-                          value={newMetric.diastolic_bp}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button type="submit">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Reading
-                  </Button>
+                    </thead>
+                    <tbody>
+                      {healthMetrics.slice(0, 10).map((metric) => (
+                        <tr key={metric.id} className="border-b">
+                          <td className="p-2">{formatDate(metric.created_at)}</td>
+                          <td className="p-2">{metric.heart_rate}</td>
+                          <td className="p-2">{metric.systolic_bp}/{metric.diastolic_bp}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-      
-      {/* Enhanced HCI Principles Information */}
-      <div className="rounded-lg bg-muted p-6 mt-12">
-        <h3 className="text-lg font-medium mb-3">HCI Principles Demonstrated on this Page:</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div className="bg-card rounded-md p-4 shadow-sm border">
-            <h4 className="font-medium mb-2">Perception & Cognition</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li><strong>Gestalt Principles:</strong> Proximity and similarity in card grouping</li>
-              <li><strong>Color Theory:</strong> Meaningful color coding for health statuses</li>
-              <li><strong>Cognitive Load:</strong> Information segmented into manageable tabs</li>
-            </ul>
-          </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Sidebar - 4 columns */}
+        <div className="md:col-span-4 space-y-6">
+          {/* Health Insights Component */}
+          <HealthInsights latestMetric={healthMetrics[0]} />
           
-          <div className="bg-card rounded-md p-4 shadow-sm border">
-            <h4 className="font-medium mb-2">Interaction Design</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li><strong>Affordances:</strong> Visual cues indicating interactive elements</li>
-              <li><strong>Feedback:</strong> Immediate response to user actions</li>
-              <li><strong>Gulf of Execution:</strong> Minimal steps to complete tasks</li>
-              <li><strong>Mental Models:</strong> Interface aligned with user expectations</li>
-            </ul>
-          </div>
-          
-          <div className="bg-card rounded-md p-4 shadow-sm border">
-            <h4 className="font-medium mb-2">Accessibility & Inclusion</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li><strong>WCAG Compliance:</strong> Color contrast and semantic HTML</li>
-              <li><strong>Error Recovery:</strong> Clear, helpful error messages</li>
-              <li><strong>Inclusive Design:</strong> Multiple ways to perform actions</li>
-            </ul>
-          </div>
-          
-          <div className="bg-card rounded-md p-4 shadow-sm border">
-            <h4 className="font-medium mb-2">Information Architecture</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li><strong>Progressive Disclosure:</strong> Complex data shown in stages</li>
-              <li><strong>Visual Hierarchy:</strong> Important information emphasized</li>
-              <li><strong>Information Scent:</strong> Clear navigation paths for users</li>
-            </ul>
-          </div>
-          
-          <div className="bg-card rounded-md p-4 shadow-sm border">
-            <h4 className="font-medium mb-2">User Experience</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li><strong>Don Norman's Principles:</strong> Visibility, constraints, and consistency</li>
-              <li><strong>Aesthetic-Usability Effect:</strong> Pleasing design enhances perceived usability</li>
-              <li><strong>Microinteractions:</strong> Small responses that enhance engagement</li>
-            </ul>
-          </div>
-          
-          <div className="bg-card rounded-md p-4 shadow-sm border">
-            <h4 className="font-medium mb-2">Emerging Concepts</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
-              <li><strong>Data Visualization:</strong> Complex health data represented visually</li>
-              <li><strong>Skeuomorphism vs Flat Design:</strong> Modern UI with familiar metaphors</li>
-              <li><strong>Contextual Design:</strong> Interfaces adapting to user contexts and needs</li>
-            </ul>
-          </div>
+          {/* Notifications Component */}
+          <NotificationCenter />
         </div>
       </div>
     </div>

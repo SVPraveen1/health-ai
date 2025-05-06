@@ -254,24 +254,6 @@ const Index = () => {
         </div>
       </div>
 
-      {/* HCI Principles Information */}
-      <div className="container px-4 md:px-6 py-8">
-        <div className="rounded-lg bg-muted p-6">
-          <h3 className="text-lg font-medium mb-3">HCI Principles Demonstrated on this Page:</h3>
-          <ul className="list-disc pl-5 grid gap-3 md:grid-cols-2">
-            <li><strong>Aesthetic-Usability Effect:</strong> Visually appealing design enhances perceived usability</li>
-            <li><strong>Social Proof (Cialdini):</strong> Testimonials section showing others using the system</li>
-            <li><strong>Gestalt Principles:</strong> Proximity and similarity in card layouts</li>
-            <li><strong>Psychology of Colors:</strong> Blue tones for trust and healthcare associations</li>
-            <li><strong>Hick-Hyman Law:</strong> Limited, focused options to reduce decision complexity</li>
-            <li><strong>Fitts' Law:</strong> Large, easily clickable buttons with proper spacing</li>
-            <li><strong>Miller's Law:</strong> Information grouped into digestible chunks (7±2)</li>
-            <li><strong>Visual Hierarchy:</strong> Clear content structure from most to least important</li>
-            <li><strong>Recognition over Recall:</strong> Clear icons and labels to help users recognize features</li>
-            <li><strong>Progressive Disclosure:</strong> Information revealed in logical, organized sections</li>
-          </ul>
-        </div>
-      </div>
     </div>
   );
 };

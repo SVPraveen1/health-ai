@@ -1,41 +1,27 @@
-
 import React from "react";
-import { Heart } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <footer className="border-t py-6 md:py-8">
-      <div className="container flex flex-col items-center justify-between gap-4 md:flex-row">
-        <div className="flex items-center gap-2">
-          <Heart className="h-5 w-5 text-red-500" />
-          <p className="text-sm text-muted-foreground">
-            HealthAI © {new Date().getFullYear()}
+    <footer className="bg-[#F8F9FF] py-12">
+      <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-4">About HealthAI</h2>
+          <p className="text-gray-600">
+            Your one-stop platform for managing personal health and medical consultations.
           </p>
         </div>
-        
-        <div className="flex gap-4">
-          <a href="#" className="text-sm text-muted-foreground hover:underline">
-            Privacy
-          </a>
-          <a href="#" className="text-sm text-muted-foreground hover:underline">
-            Terms
-          </a>
-          <a href="#" className="text-sm text-muted-foreground hover:underline">
-            Contact
-          </a>
-        </div>
-      </div>
 
-      <div className="container mt-6 border-t pt-6">
-        <div className="rounded-lg bg-muted p-4 text-sm">
-          <h4 className="font-medium mb-2">HCI Principles Demonstrated:</h4>
-          <ul className="list-disc pl-5 space-y-1">
-            <li><strong>Jakob's Law:</strong> Using conventional footer patterns users are familiar with</li>
-            <li><strong>Consistency:</strong> Maintaining design consistency with the rest of the interface</li>
-            <li><strong>Accessibility (WCAG):</strong> Proper contrast ratios and semantic HTML structure</li>
-          </ul>
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Quick Links</h2>
+            <div className="flex flex-row space-x-4">
+            <Link to="/" className="text-gray-600 hover:text-gray-900">Home</Link>
+            <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
+            <Link to="/contact" className="text-gray-600 hover:text-gray-900">Contact</Link>
+          </div>
         </div>
       </div>
+      
     </footer>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 type Message = {
   id: string;
@@ -122,8 +125,8 @@ const HealthChat = () => {
           </p>
         </div>
         
-        <div className="grid gap-8 md:grid-cols-4">
-          <div className="md:col-span-3">
+        <div className="grid gap-8 md:grid-cols-[1.8fr_1fr]">
+          <div className="md:col-span-1">
             <Card className="border-2 border-primary/20 h-[70vh] flex flex-col">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center">
@@ -178,7 +181,42 @@ const HealthChat = () => {
                               : "bg-muted"
                           }`}
                         >
-                          <div className="whitespace-pre-line">{message.content}</div>
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                h3: ({node, ...props}) => <h3 className="text-lg font-semibold mt-4 mb-2" {...props} />,
+                                ul: ({node, ...props}) => <ul className="my-2 list-disc pl-4" {...props} />,
+                                li: ({node, ...props}) => <li className="my-1" {...props} />,
+                                table: ({node, ...props}) => <table className="border-collapse border border-gray-300 my-4" {...props} />,
+                                td: ({node, ...props}) => <td className="border border-gray-300 p-2" {...props} />,
+                                th: ({node, ...props}) => <th className="border border-gray-300 p-2 bg-gray-100" {...props} />,
+                                blockquote: ({node, ...props}) => (
+                                  <blockquote className="border-l-4 border-yellow-500 bg-yellow-50 p-3 my-4 rounded-r" {...props} />
+                                ),
+                                code: ({node, inline, className, children, ...props}) => {
+                                  const match = /language-(\w+)/.exec(className || '');
+                                  return !inline && match ? (
+                                    <SyntaxHighlighter
+                                      style={tomorrow}
+                                      language={match[1]}
+                                      PreTag="div"
+                                      className="rounded-md"
+                                      {...props}
+                                    >
+                                      {String(children).replace(/\n$/, '')}
+                                    </SyntaxHighlighter>
+                                  ) : (
+                                    <code className={className} {...props}>
+                                      {children}
+                                    </code>
+                                  )
+                                }
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </div>
                           <div 
                             className={`text-xs mt-1 ${
                               message.sender === "user"
@@ -250,18 +288,18 @@ const HealthChat = () => {
             )}
           </div>
           
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-2">
+          <div className="md:col-span-1">
+            <Card className="border border-gray-200 shadow-sm hover:border-primary/50 transition-colors w-full">
+              <CardHeader className="pb-4">
                 <CardTitle className="text-base">Suggested Questions</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+              <CardContent className="p-4">
+                <div className="flex flex-col gap-3">
                   {suggestedQuestions.map((question, i) => (
                     <Button 
                       key={i}
                       variant="ghost"
-                      className="w-full justify-start text-sm h-auto py-2 text-left"
+                      className="w-full justify-start text-sm px-4 py-3 h-auto text-left hover:bg-gray-50 whitespace-normal break-words rounded-lg"
                       onClick={() => handleSuggestedQuestion(question)}
                     >
                       {question}
@@ -284,21 +322,7 @@ const HealthChat = () => {
         </div>
         
         {/* HCI Principles Information */}
-        <div className="rounded-lg bg-muted p-6 mt-12">
-          <h3 className="text-lg font-medium mb-3">HCI Principles Demonstrated on this Page:</h3>
-          <ul className="list-disc pl-5 grid gap-3 md:grid-cols-2">
-            <li><strong>Feedback:</strong> Clear visual indication of message status and typing</li>
-            <li><strong>Affordance:</strong> Chat interface follows familiar messaging patterns</li>
-            <li><strong>Recognition over Recall:</strong> Suggested questions reduce cognitive load</li>
-            <li><strong>Consistency:</strong> Chat UI follows standard messaging conventions</li>
-            <li><strong>User Control:</strong> Ability to rate responses as helpful or not</li>
-            <li><strong>Error Recovery:</strong> Clear error messages if AI fails to respond</li>
-            <li><strong>Flexibility:</strong> Multiple ways to interact (free text or suggested questions)</li>
-            <li><strong>Visibility of System Status:</strong> Loading indicators show when AI is processing</li>
-            <li><strong>Aesthetic Design:</strong> Clean, visually pleasing chat interface</li>
-            <li><strong>Minimalist Design:</strong> Focus on conversation without unnecessary elements</li>
-          </ul>
-        </div>
+        
       </div>
     </div>
   );
