@@ -5,12 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Scale, Ruler, ArrowRight, Loader, Brain, HeartPulse, Weight, Activity, AlertCircle } from "lucide-react";
+import { Scale, Ruler, ArrowRight, Loader, Brain, HeartPulse, Weight, Activity, AlertCircle, RefreshCw, Share } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PredictionFormData, DiseaseRisk } from "@/types/health";
+import { motion } from "framer-motion";
+import { fadeInUp, staggerContainer, scaleIn, pulseAnimation, slideInRight } from "@/lib/animations";
+import PageWrapper from "@/components/PageWrapper";
 
 interface PredictionResult {
   results: string;
@@ -21,6 +24,7 @@ interface PredictionResult {
 const DiseasePrediction = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [activeRisk, setActiveRisk] = useState<string | null>(null);
   const [formData, setFormData] = useState<PredictionFormData>({
     age: "",
     gender: "",
@@ -179,403 +183,543 @@ const DiseasePrediction = () => {
   };
 
   return (
-    <div className="container px-4 md:px-6 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">AI Disease Risk Assessment</h1>
-          <p className="text-muted-foreground">
-            Get personalized health insights based on your parameters
-          </p>
-        </div>
+    <PageWrapper>
+      <div className="container mx-auto px-4 py-8">
+        <motion.div 
+          variants={fadeInUp}
+          className="max-w-4xl mx-auto"
+        >
+          <motion.div
+            variants={scaleIn}
+            className="mb-8 text-center"
+          >
+            <h1 className="text-3xl font-bold mb-2">Disease Risk Assessment</h1>
+            <p className="text-muted-foreground">
+              Enter your health parameters for an AI-powered disease risk analysis
+            </p>
+          </motion.div>
 
-        {!prediction ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Health Parameters</CardTitle>
-              <CardDescription>
-                Fill in your health details for a personalized risk assessment
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="age">Age</Label>
-                    <Input
-                      id="age"
-                      name="age"
-                      type="number"
-                      placeholder="Years"
-                      min="1"
-                      max="120"
-                      value={formData.age}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select 
-                      value={formData.gender} 
-                      onValueChange={(value) => handleSelectChange("gender", value)}
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="grid gap-6 md:grid-cols-2"
+          >
+            {/* Form Section */}
+            <motion.div variants={fadeInUp}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Health Parameters</CardTitle>
+                  <CardDescription>Fill in your current health metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Personal Information */}
+                    <motion.div
+                      variants={staggerContainer}
+                      className="space-y-4"
                     >
-                      <SelectTrigger id="gender">
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="height">Height (cm)</Label>
-                    <Input
-                      id="height"
-                      name="height"
-                      type="number"
-                      placeholder="Height in cm"
-                      min="50"
-                      max="250"
-                      value={formData.height}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="weight">Weight (kg)</Label>
-                    <Input
-                      id="weight"
-                      name="weight"
-                      type="number"
-                      placeholder="Weight in kg"
-                      min="1"
-                      max="500"
-                      value={formData.weight}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="grid gap-6 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="bpSystolic">Systolic BP (mmHg)</Label>
-                    <Input
-                      id="bpSystolic"
-                      name="bpSystolic"
-                      type="number"
-                      placeholder="e.g. 120"
-                      min="70"
-                      max="250"
-                      value={formData.bpSystolic}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="bpDiastolic">Diastolic BP (mmHg)</Label>
-                    <Input
-                      id="bpDiastolic"
-                      name="bpDiastolic"
-                      type="number"
-                      placeholder="e.g. 80"
-                      min="40"
-                      max="150"
-                      value={formData.bpDiastolic}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="heartRate">Heart Rate (bpm)</Label>
-                    <Input
-                      id="heartRate"
-                      name="heartRate"
-                      type="number"
-                      placeholder="e.g. 72"
-                      min="30"
-                      max="200"
-                      value={formData.heartRate}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Cholesterol Level</Label>
-                    <Select 
-                      value={formData.cholesterol} 
-                      onValueChange={(value) => handleSelectChange("cholesterol", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="borderline">Borderline High</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="very-high">Very High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Glucose Level</Label>
-                    <Select 
-                      value={formData.glucose} 
-                      onValueChange={(value) => handleSelectChange("glucose", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="prediabetic">Pre-diabetic</SelectItem>
-                        <SelectItem value="diabetic">Diabetic</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="grid gap-6 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label>Smoking Status</Label>
-                    <Select 
-                      value={formData.smoker} 
-                      onValueChange={(value) => handleSelectChange("smoker", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no">Non-smoker</SelectItem>
-                        <SelectItem value="former">Former Smoker</SelectItem>
-                        <SelectItem value="occasional">Occasional Smoker</SelectItem>
-                        <SelectItem value="regular">Regular Smoker</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Alcohol Consumption</Label>
-                    <Select 
-                      value={formData.alcoholConsumption} 
-                      onValueChange={(value) => handleSelectChange("alcoholConsumption", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="occasional">Occasional</SelectItem>
-                        <SelectItem value="moderate">Moderate</SelectItem>
-                        <SelectItem value="heavy">Heavy</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Exercise (hours/week)</Label>
-                    <Select 
-                      value={formData.exerciseHours} 
-                      onValueChange={(value) => handleSelectChange("exerciseHours", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0-1">0-1 hours</SelectItem>
-                        <SelectItem value="1-3">1-3 hours</SelectItem>
-                        <SelectItem value="3-5">3-5 hours</SelectItem>
-                        <SelectItem value="5+">5+ hours</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Family History (Select all that apply)</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                    {["Diabetes", "Heart Disease", "Stroke", "Hypertension"].map((condition) => (
-                      <div 
-                        key={condition}
-                        className={`border rounded-md p-3 cursor-pointer transition-colors
-                          ${formData.familyHistory.includes(condition) ? "bg-primary/10 border-primary" : ""}
-                        `}
-                        onClick={() => handleToggleFamilyHistory(condition)}
-                      >
-                        <div className="flex items-center justify-center gap-2 text-center">
-                          {formData.familyHistory.includes(condition) && (
-                            <div className="w-2 h-2 rounded-full bg-primary" />
-                          )}
-                          <span className="text-sm">{condition}</span>
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="age">Age</Label>
+                          <Input
+                            id="age"
+                            name="age"
+                            type="number"
+                            placeholder="Years"
+                            min="1"
+                            max="120"
+                            value={formData.age}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="gender">Gender</Label>
+                          <Select 
+                            value={formData.gender} 
+                            onValueChange={(value) => handleSelectChange("gender", value)}
+                          >
+                            <SelectTrigger id="gender">
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing Data...
-                    </>
-                  ) : (
-                    <>
-                      Generate Prediction
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-                
-                <Alert variant="destructive" className="mt-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Important Notice</AlertTitle>
-                  <AlertDescription>
-                    This AI prediction is not a substitute for professional medical advice, diagnosis, or treatment. 
-                    Always seek the advice of your physician or other qualified health provider.
-                  </AlertDescription>
-                </Alert>
-              </form>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Brain className="mr-2 h-5 w-5 text-primary" />
-                  AI Risk Assessment Results
-                </CardTitle>
-                <CardDescription>
-                  Based on your health parameters and risk factors
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <Scale className="h-5 w-5 text-primary" />
+                      
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="height">Height (cm)</Label>
+                          <Input
+                            id="height"
+                            name="height"
+                            type="number"
+                            placeholder="Height in cm"
+                            min="50"
+                            max="250"
+                            value={formData.height}
+                            onChange={handleInputChange}
+                            required
+                          />
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">BMI</p>
-                        <p className="text-2xl font-bold">{prediction.bmi}</p>
-                        <p className={`text-xs ${getBMIColor(bmiCategory)}`}>
-                          {bmiCategory}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <HeartPulse className="h-5 w-5 text-red-500" />
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="weight">Weight (kg)</Label>
+                          <Input
+                            id="weight"
+                            name="weight"
+                            type="number"
+                            placeholder="Weight in kg"
+                            min="1"
+                            max="500"
+                            value={formData.weight}
+                            onChange={handleInputChange}
+                            required
+                          />
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">Blood Pressure</p>
-                        <p className="text-2xl font-bold">{formData.bpSystolic}/{formData.bpDiastolic}</p>
-                        <p className="text-xs text-muted-foreground">mmHg</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <Activity className="h-5 w-5 text-blue-500" />
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="grid gap-6 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="bpSystolic">Systolic BP (mmHg)</Label>
+                          <Input
+                            id="bpSystolic"
+                            name="bpSystolic"
+                            type="number"
+                            placeholder="e.g. 120"
+                            min="70"
+                            max="250"
+                            value={formData.bpSystolic}
+                            onChange={handleInputChange}
+                            required
+                          />
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">Exercise</p>
-                        <p className="text-2xl font-bold">{formData.exerciseHours}</p>
-                        <p className="text-xs text-muted-foreground">hours/week</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-4 text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <Weight className="h-5 w-5 text-purple-500" />
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="bpDiastolic">Diastolic BP (mmHg)</Label>
+                          <Input
+                            id="bpDiastolic"
+                            name="bpDiastolic"
+                            type="number"
+                            placeholder="e.g. 80"
+                            min="40"
+                            max="150"
+                            value={formData.bpDiastolic}
+                            onChange={handleInputChange}
+                            required
+                          />
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">Age</p>
-                        <p className="text-2xl font-bold">{formData.age}</p>
-                        <p className="text-xs text-muted-foreground">years</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="space-y-4">
-                    {prediction.risks.map((risk, index) => (
-                      <Card key={index} className={`border-l-4 ${
-                        risk.risk >= 70 ? 'border-l-red-500' :
-                        risk.risk >= 40 ? 'border-l-yellow-500' :
-                        'border-l-green-500'
-                      }`}>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-lg flex items-center justify-between">
-                            {risk.disease}
-                            <span className={`text-sm px-2 py-1 rounded ${
-                              risk.risk >= 70 ? 'bg-red-100 text-red-800' :
-                              risk.risk >= 40 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {risk.risk}% Risk
-                            </span>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div>
-                              <p className="text-sm font-medium">Key Risk Factors:</p>
-                              <ul className="list-disc list-inside text-sm text-muted-foreground pl-4">
-                                {risk.factors.map((factor, i) => (
-                                  <li key={i}>{factor}</li>
-                                ))}
-                              </ul>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="heartRate">Heart Rate (bpm)</Label>
+                          <Input
+                            id="heartRate"
+                            name="heartRate"
+                            type="number"
+                            placeholder="e.g. 72"
+                            min="30"
+                            max="200"
+                            value={formData.heartRate}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Cholesterol Level</Label>
+                          <Select 
+                            value={formData.cholesterol} 
+                            onValueChange={(value) => handleSelectChange("cholesterol", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="borderline">Borderline High</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="very-high">Very High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Glucose Level</Label>
+                          <Select 
+                            value={formData.glucose} 
+                            onValueChange={(value) => handleSelectChange("glucose", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="prediabetic">Pre-diabetic</SelectItem>
+                              <SelectItem value="diabetic">Diabetic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid gap-6 md:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label>Smoking Status</Label>
+                          <Select 
+                            value={formData.smoker} 
+                            onValueChange={(value) => handleSelectChange("smoker", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="no">Non-smoker</SelectItem>
+                              <SelectItem value="former">Former Smoker</SelectItem>
+                              <SelectItem value="occasional">Occasional Smoker</SelectItem>
+                              <SelectItem value="regular">Regular Smoker</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Alcohol Consumption</Label>
+                          <Select 
+                            value={formData.alcoholConsumption} 
+                            onValueChange={(value) => handleSelectChange("alcoholConsumption", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="occasional">Occasional</SelectItem>
+                              <SelectItem value="moderate">Moderate</SelectItem>
+                              <SelectItem value="heavy">Heavy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Exercise (hours/week)</Label>
+                          <Select 
+                            value={formData.exerciseHours} 
+                            onValueChange={(value) => handleSelectChange("exerciseHours", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0-1">0-1 hours</SelectItem>
+                              <SelectItem value="1-3">1-3 hours</SelectItem>
+                              <SelectItem value="3-5">3-5 hours</SelectItem>
+                              <SelectItem value="5+">5+ hours</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Family History (Select all that apply)</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                          {["Diabetes", "Heart Disease", "Stroke", "Hypertension"].map((condition) => (
+                            <div 
+                              key={condition}
+                              className={`border rounded-md p-3 cursor-pointer transition-colors
+                                ${formData.familyHistory.includes(condition) ? "bg-primary/10 border-primary" : ""}
+                              `}
+                              onClick={() => handleToggleFamilyHistory(condition)}
+                            >
+                              <div className="flex items-center justify-center gap-2 text-center">
+                                {formData.familyHistory.includes(condition) && (
+                                  <div className="w-2 h-2 rounded-full bg-primary" />
+                                )}
+                                <span className="text-sm">{condition}</span>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">Recommendation:</p>
-                              <p className="text-sm text-muted-foreground">{risk.recommendation}</p>
-                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button type="submit" className="w-full">
+                        {loading ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          >
+                            <Loader className="h-4 w-4" />
+                          </motion.div>
+                        ) : (
+                          <>Analyze Risk</>
+                        )}
+                      </Button>
+                    </motion.div>
+                  </form>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Results Section */}
+            <motion.div variants={fadeInUp}>
+              {prediction ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Card className="border-2 border-primary/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <motion.div animate={pulseAnimation}>
+                          <Activity className="h-6 w-6 text-primary" />
+                        </motion.div>
+                        Risk Assessment Results
+                      </CardTitle>
+                      <CardDescription>
+                        Based on your health parameters and lifestyle factors
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <motion.div
+                        variants={staggerContainer}
+                        initial="initial"
+                        animate="animate"
+                        className="space-y-6"
+                      >
+                        {/* Key Health Metrics */}
+                        <motion.div variants={fadeInUp}>
+                          <h3 className="text-lg font-semibold mb-4">Key Health Metrics</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <Card className="bg-muted/50 border-primary/20">
+                              <CardContent className="p-4 text-center">
+                                <div className="flex items-center justify-center mb-2">
+                                  <Scale className="h-5 w-5 text-primary" />
+                                </div>
+                                <p className="text-sm font-medium">BMI</p>
+                                <p className="text-2xl font-bold">{prediction.bmi}</p>
+                                <p className={`text-sm font-medium ${getBMIColor(bmiCategory)}`}>
+                                  {bmiCategory}
+                                </p>
+                              </CardContent>
+                            </Card>
+                            
+                            <Card className="bg-muted/50 border-primary/20">
+                              <CardContent className="p-4 text-center">
+                                <div className="flex items-center justify-center mb-2">
+                                  <HeartPulse className="h-5 w-5 text-red-500" />
+                                </div>
+                                <p className="text-sm font-medium">Blood Pressure</p>
+                                <p className="text-xl font-bold">{formData.bpSystolic}/{formData.bpDiastolic}</p>
+                                <p className="text-sm text-muted-foreground">mmHg</p>
+                              </CardContent>
+                            </Card>
+
+                            <Card className="bg-muted/50 border-primary/20">
+                              <CardContent className="p-4 text-center">
+                                <div className="flex items-center justify-center mb-2">
+                                  <Activity className="h-5 w-5 text-blue-500" />
+                                </div>
+                                <p className="text-sm font-medium">Exercise</p>
+                                <p className="text-xl font-bold">{formData.exerciseHours || "0-1"}</p>
+                                <p className="text-sm text-muted-foreground">hours/week</p>
+                              </CardContent>
+                            </Card>
+
+                            <Card className="bg-muted/50 border-primary/20">
+                              <CardContent className="p-4 text-center">
+                                <div className="flex items-center justify-center mb-2">
+                                  <Weight className="h-5 w-5 text-purple-500" />
+                                </div>
+                                <p className="text-sm font-medium">Age</p>
+                                <p className="text-xl font-bold">{formData.age}</p>
+                                <p className="text-sm text-muted-foreground">years</p>
+                              </CardContent>
+                            </Card>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={() => setPrediction(null)}>
-                  Start Over
-                </Button>
-                <Button>
-                  Download Report
-                </Button>
-              </CardFooter>
-            </Card>
+                        </motion.div>
 
-            <Alert className="border-primary/50 bg-primary/10">
-              <HeartPulse className="h-4 w-4 text-primary" />
-              <AlertTitle>Next Steps</AlertTitle>
-              <AlertDescription>
-                Consider discussing these results with your healthcare provider. Regular check-ups are essential for maintaining good health.
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
+                        {/* Risk Assessment */}
+                        <motion.div variants={fadeInUp}>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold">Disease Risk Analysis</h3>
+                              <div className="flex items-center gap-4 text-sm">
+                                <span className="flex items-center gap-1">
+                                  <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                                  High Risk (≥70%)
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
+                                  Moderate Risk (40-69%)
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                                  Low Risk (&lt;40%)
+                                </span>
+                              </div>
+                            </div>
+
+                            {prediction.risks.map((risk, index) => (
+                              <motion.div
+                                key={index}
+                                whileHover={{ scale: 1.02 }}
+                                onClick={() => setActiveRisk(activeRisk === risk.disease ? null : risk.disease)}
+                                className="cursor-pointer"
+                              >
+                                <Card className={`border-l-4 ${
+                                  risk.risk >= 70 ? 'border-l-red-500' :
+                                  risk.risk >= 40 ? 'border-l-yellow-500' :
+                                  'border-l-green-500'
+                                } bg-card/50 backdrop-blur shadow-lg transition-colors ${
+                                  activeRisk === risk.disease ? 'ring-2 ring-primary' : ''
+                                }`}>
+                                  <CardHeader className="pb-2">
+                                    <div className="flex items-center justify-between">
+                                      <CardTitle className="text-lg flex items-center gap-2">
+                                        {risk.disease}
+                                        {risk.risk >= 70 && (
+                                          <motion.span 
+                                            animate={{ scale: [1, 1.2, 1] }}
+                                            transition={{ duration: 2, repeat: Infinity }}
+                                            className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800"
+                                          >
+                                            High Risk
+                                          </motion.span>
+                                        )}
+                                      </CardTitle>
+                                      <div className="relative w-32 h-4 bg-muted rounded-full overflow-hidden">
+                                        <motion.div 
+                                          initial={{ width: 0 }}
+                                          animate={{ width: `${risk.risk}%` }}
+                                          transition={{ duration: 1, ease: "easeOut" }}
+                                          className={`absolute top-0 left-0 h-full rounded-full ${
+                                            risk.risk >= 70 ? 'bg-red-500' :
+                                            risk.risk >= 40 ? 'bg-yellow-500' :
+                                            'bg-green-500'
+                                          }`}
+                                        />
+                                        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white mix-blend-difference">
+                                          {risk.risk}% Risk
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </CardHeader>
+                                  <CardContent>
+                                    <motion.div 
+                                      initial={false}
+                                      animate={{ height: activeRisk === risk.disease ? "auto" : "auto" }}
+                                      className="space-y-3"
+                                    >
+                                      <div>
+                                        <p className="text-sm font-medium mb-1">Key Risk Factors:</p>
+                                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                                          {risk.factors.map((factor, i) => (
+                                            <motion.li 
+                                              key={i}
+                                              initial={{ opacity: 0, x: -20 }}
+                                              animate={{ opacity: 1, x: 0 }}
+                                              transition={{ delay: i * 0.1 }}
+                                              className="ml-2"
+                                            >
+                                              {factor}
+                                            </motion.li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                      <Separator className="my-2" />
+                                      <div>
+                                        <p className="text-sm font-medium mb-1">Recommendations:</p>
+                                        <motion.p 
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          transition={{ delay: 0.3 }}
+                                          className="text-sm text-muted-foreground"
+                                        >
+                                          {risk.recommendation}
+                                        </motion.p>
+                                      </div>
+                                      {activeRisk === risk.disease && (
+                                        <motion.div
+                                          initial={{ opacity: 0, y: 20 }}
+                                          animate={{ opacity: 1, y: 0 }}
+                                          className="mt-4 p-4 bg-muted/50 rounded-lg"
+                                        >
+                                          <p className="text-sm font-medium mb-2">Prevention Tips:</p>
+                                          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                                            <li>Regular health check-ups</li>
+                                            <li>Maintain a healthy lifestyle</li>
+                                            <li>Follow medical advice</li>
+                                            <li>Monitor symptoms closely</li>
+                                          </ul>
+                                        </motion.div>
+                                      )}
+                                    </motion.div>
+                                  </CardContent>
+                                </Card>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </motion.div>
+
+                        {/* General Advice */}
+                        <motion.div variants={fadeInUp}>
+                          <Alert className="bg-card border-primary/50">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Important Notice</AlertTitle>
+                            <AlertDescription>
+                              This risk assessment is based on the information provided and uses AI for analysis. It should not replace professional medical advice. Please consult with healthcare providers for proper evaluation and personalized recommendations.
+                            </AlertDescription>
+                          </Alert>
+                        </motion.div>
+                      </motion.div>
+                    </CardContent>
+                    <CardFooter>
+                      <div className="flex items-center gap-4">
+                        <Button variant="outline" onClick={() => setPrediction(null)}>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Start Over
+                        </Button>
+                        <Button>
+                          <Share className="mr-2 h-4 w-4" />
+                          Share Results
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+              ) : (
+                <motion.div
+                  variants={fadeInUp}
+                  className="h-full flex items-center justify-center"
+                >
+                  <Card className="w-full">
+                    <CardHeader className="text-center">
+                      <CardTitle>Ready for Analysis</CardTitle>
+                      <CardDescription>
+                        Fill in your health parameters to receive a detailed risk assessment
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </motion.div>
+              )}
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
-    </div>
+    </PageWrapper>
   );
 };
 

@@ -18,9 +18,10 @@ export interface HealthScore {
 }
 
 export interface DiseaseRisk {
-  condition: string;
-  riskLevel: "low" | "moderate" | "high";
+  disease: string;
+  risk: number;
   factors: string[];
+  recommendation: string;
 }
 
 export interface AnalyticsResult {

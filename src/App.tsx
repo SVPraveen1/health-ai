@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import SymptomChecker from "./pages/SymptomChecker";
@@ -87,7 +88,9 @@ const App = () => (
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-1">
-              <AppRoutes />
+              <AnimatePresence mode="wait">
+                <AppRoutes />
+              </AnimatePresence>
             </main>
             <Footer />
           </div>

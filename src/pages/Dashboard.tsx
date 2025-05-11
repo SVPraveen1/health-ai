@@ -11,6 +11,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import HealthInsights from "@/components/HealthInsights";
 import { NotificationCenter } from "@/components/Notifications";
+import { motion } from "framer-motion";
+import PageWrapper from "@/components/PageWrapper";
+import { fadeInUp, staggerContainer, scaleIn, slideInLeft, slideInRight, cardHover } from "@/lib/animations";
 
 interface HealthMetric {
   id: string;
@@ -199,298 +202,334 @@ const Dashboard = () => {
   })).reverse();
 
   return (
-    <div className="container px-4 md:px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Your Health Dashboard</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add New Reading
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Health Reading</DialogTitle>
-              <DialogDescription>
-                Record your current heart rate and blood pressure
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-              <div className="grid gap-2">
-                <Label htmlFor="heart_rate">Heart Rate (BPM)</Label>
-                <Input
-                  id="heart_rate"
-                  name="heart_rate"
-                  type="number"
-                  placeholder="e.g., 72"
-                  value={newMetric.heart_rate}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label>Blood Pressure (mmHg)</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="systolic_bp" className="text-sm">Systolic (top)</Label>
-                    <Input
-                      id="systolic_bp"
-                      name="systolic_bp"
-                      type="number"
-                      placeholder="e.g., 120"
-                      value={newMetric.systolic_bp}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="diastolic_bp" className="text-sm">Diastolic (bottom)</Label>
-                    <Input
-                      id="diastolic_bp"
-                      name="diastolic_bp"
-                      type="number"
-                      placeholder="e.g., 80"
-                      value={newMetric.diastolic_bp}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <Button type="submit" className="w-full">
-                <Save className="mr-2 h-4 w-4" />
-                Save Reading
+    <PageWrapper>
+      <div className="container px-4 md:px-6 py-8">
+        <motion.div 
+          variants={fadeInUp}
+          className="flex items-center justify-between mb-6"
+        >
+          <h1 className="text-3xl font-bold">Your Health Dashboard</h1>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add New Reading
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Main Dashboard Grid */}
-      <div className="grid gap-6 md:grid-cols-12">
-        {/* Health Metrics Section - 8 columns */}
-        <div className="md:col-span-8 space-y-6">
-          {/* Latest Readings Overview */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
-                  <Heart className="mr-2 h-5 w-5 text-red-500" />
-                  Latest Heart Rate
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : error ? (
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-4 w-4" />
-                    <p>Error loading data</p>
-                  </div>
-                ) : healthMetrics.length > 0 ? (
-                  <div className="text-3xl font-bold">
-                    {healthMetrics[0].heart_rate} <span className="text-lg font-normal">BPM</span>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No data available</p>
-                )}
-              </CardContent>
-              {healthMetrics.length > 0 && (
-                <CardFooter className="text-sm text-muted-foreground">
-                  <div className="flex items-center">
-                    <Calendar className="mr-1 h-4 w-4" />
-                    {formatDate(healthMetrics[0].created_at)}
-                  </div>
-                </CardFooter>
-              )}
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center">
-                  <Activity className="mr-2 h-5 w-5 text-blue-500" />
-                  Latest Blood Pressure
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : error ? (
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-4 w-4" />
-                    <p>Error loading data</p>
-                  </div>
-                ) : healthMetrics.length > 0 ? (
-                  <div className="text-3xl font-bold">
-                    {healthMetrics[0].systolic_bp}/{healthMetrics[0].diastolic_bp} <span className="text-lg font-normal">mmHg</span>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No data available</p>
-                )}
-              </CardContent>
-              {healthMetrics.length > 0 && (
-                <CardFooter className="text-sm text-muted-foreground">
-                  <div className="flex items-center">
-                    <Calendar className="mr-1 h-4 w-4" />
-                    {formatDate(healthMetrics[0].created_at)}
-                  </div>
-                </CardFooter>
-              )}
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Health Status</CardTitle>
-                <CardDescription>Based on your latest readings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : error ? (
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-4 w-4" />
-                    <p>Error loading data</p>
-                  </div>
-                ) : healthMetrics.length > 0 ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span>Heart Rate</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        healthMetrics[0].heart_rate > 100 || healthMetrics[0].heart_rate < 60 
-                          ? 'bg-amber-100 text-amber-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {healthMetrics[0].heart_rate > 100 
-                          ? 'Elevated' 
-                          : healthMetrics[0].heart_rate < 60 
-                            ? 'Low' 
-                            : 'Normal'}
-                      </span>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Health Reading</DialogTitle>
+                <DialogDescription>
+                  Record your current heart rate and blood pressure
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="heart_rate">Heart Rate (BPM)</Label>
+                  <Input
+                    id="heart_rate"
+                    name="heart_rate"
+                    type="number"
+                    placeholder="e.g., 72"
+                    value={newMetric.heart_rate}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <Label>Blood Pressure (mmHg)</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="systolic_bp" className="text-sm">Systolic (top)</Label>
+                      <Input
+                        id="systolic_bp"
+                        name="systolic_bp"
+                        type="number"
+                        placeholder="e.g., 120"
+                        value={newMetric.systolic_bp}
+                        onChange={handleInputChange}
+                        required
+                      />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span>Blood Pressure</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        healthMetrics[0].systolic_bp >= 140 || healthMetrics[0].diastolic_bp >= 90
-                          ? 'bg-amber-100 text-amber-800'
-                          : healthMetrics[0].systolic_bp >= 130 || healthMetrics[0].diastolic_bp >= 85
-                            ? 'bg-amber-100 text-amber-800'
-                            : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
-                              ? 'bg-blue-100 text-blue-800'
+                    <div>
+                      <Label htmlFor="diastolic_bp" className="text-sm">Diastolic (bottom)</Label>
+                      <Input
+                        id="diastolic_bp"
+                        name="diastolic_bp"
+                        type="number"
+                        placeholder="e.g., 80"
+                        value={newMetric.diastolic_bp}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <Button type="submit" className="w-full">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Reading
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </motion.div>
+
+        <div className="grid gap-6 md:grid-cols-12">
+          <motion.div 
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="md:col-span-8 space-y-6"
+          >
+            <motion.div 
+              variants={staggerContainer}
+              className="grid gap-4 md:grid-cols-3"
+            >
+              {/* Latest Heart Rate */}
+              <motion.div variants={fadeInUp} whileHover={cardHover}>              <Card className="bg-card hover:bg-card/90 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center">
+                    <Heart className="mr-2 h-5 w-5 text-primary" />
+                    Latest Heart Rate
+                  </CardTitle>
+                </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <p>Loading...</p>
+                    ) : error ? (
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <p>Error loading data</p>
+                      </div>
+                    ) : healthMetrics.length > 0 ? (
+                      <div className="text-3xl font-bold">
+                        {healthMetrics[0].heart_rate} <span className="text-lg font-normal">BPM</span>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No data available</p>
+                    )}
+                  </CardContent>
+                  {healthMetrics.length > 0 && (
+                    <CardFooter className="text-sm text-muted-foreground">
+                      <div className="flex items-center">
+                        <Calendar className="mr-1 h-4 w-4" />
+                        {formatDate(healthMetrics[0].created_at)}
+                      </div>
+                    </CardFooter>
+                  )}
+                </Card>
+              </motion.div>
+
+              {/* Latest Blood Pressure */}
+              <motion.div variants={fadeInUp} whileHover={cardHover}>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center">
+                      <Activity className="mr-2 h-5 w-5 text-blue-500" />
+                      Latest Blood Pressure
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <p>Loading...</p>
+                    ) : error ? (
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <p>Error loading data</p>
+                      </div>
+                    ) : healthMetrics.length > 0 ? (
+                      <div className="text-3xl font-bold">
+                        {healthMetrics[0].systolic_bp}/{healthMetrics[0].diastolic_bp} <span className="text-lg font-normal">mmHg</span>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No data available</p>
+                    )}
+                  </CardContent>
+                  {healthMetrics.length > 0 && (
+                    <CardFooter className="text-sm text-muted-foreground">
+                      <div className="flex items-center">
+                        <Calendar className="mr-1 h-4 w-4" />
+                        {formatDate(healthMetrics[0].created_at)}
+                      </div>
+                    </CardFooter>
+                  )}
+                </Card>
+              </motion.div>
+
+              {/* Health Status */}
+              <motion.div variants={fadeInUp} whileHover={cardHover}>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle>Health Status</CardTitle>
+                    <CardDescription>Based on your latest readings</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <p>Loading...</p>
+                    ) : error ? (
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <p>Error loading data</p>
+                      </div>
+                    ) : healthMetrics.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span>Heart Rate</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            healthMetrics[0].heart_rate > 100 || healthMetrics[0].heart_rate < 60 
+                              ? 'bg-amber-100 text-amber-800' 
                               : 'bg-green-100 text-green-800'
-                      }`}>
-                        {healthMetrics[0].systolic_bp >= 140 || healthMetrics[0].diastolic_bp >= 90
-                          ? 'High'
-                          : healthMetrics[0].systolic_bp >= 130 || healthMetrics[0].diastolic_bp >= 85
-                            ? 'Elevated'
-                            : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
-                              ? 'Low'
-                              : 'Normal'}
-                      </span>
+                          }`}>
+                            {healthMetrics[0].heart_rate > 100 
+                              ? 'Elevated' 
+                              : healthMetrics[0].heart_rate < 60 
+                                ? 'Low' 
+                                : 'Normal'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Blood Pressure</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            healthMetrics[0].systolic_bp >= 140 || healthMetrics[0].diastolic_bp >= 90
+                              ? 'bg-amber-100 text-amber-800'
+                              : healthMetrics[0].systolic_bp >= 130 || healthMetrics[0].diastolic_bp >= 85
+                                ? 'bg-amber-100 text-amber-800'
+                                : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800'
+                          }`}>
+                            {healthMetrics[0].systolic_bp >= 140 || healthMetrics[0].diastolic_bp >= 90
+                              ? 'High'
+                              : healthMetrics[0].systolic_bp >= 130 || healthMetrics[0].diastolic_bp >= 85
+                                ? 'Elevated'
+                                : healthMetrics[0].systolic_bp < 90 || healthMetrics[0].diastolic_bp < 60
+                                  ? 'Low'
+                                  : 'Normal'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No data available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
+
+            {/* Health Metrics History */}
+            <motion.div
+              variants={scaleIn}
+              whileHover={cardHover}
+            >
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <ChartLine className="mr-2 h-5 w-5" />
+                    Health Metrics History
+                  </CardTitle>
+                  <CardDescription>
+                    Track your heart rate and blood pressure over time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="h-[300px] flex items-center justify-center">Loading...</div>
+                  ) : error ? (
+                    <div className="h-[300px] flex items-center justify-center">
+                      <div className="flex flex-col items-center text-center gap-2">
+                        <AlertTriangle className="h-8 w-8 text-amber-600" />
+                        <p>There was an error loading your metrics</p>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => window.location.reload()}
+                          className="mt-2"
+                        >
+                          Try Again
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No data available</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  ) : healthMetrics.length > 0 ? (
+                    <div className="h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="heartRate" stroke="#f43f5e" name="Heart Rate" />
+                          <Line type="monotone" dataKey="systolicBP" stroke="#3b82f6" name="Systolic BP" />
+                          <Line type="monotone" dataKey="diastolicBP" stroke="#10b981" name="Diastolic BP" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center">
+                      <p>No health metrics available. Add your first reading to see trends.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
 
-          {/* Health Metrics History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <ChartLine className="mr-2 h-5 w-5" />
-                Health Metrics History
-              </CardTitle>
-              <CardDescription>
-                Track your heart rate and blood pressure over time
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="h-[300px] flex items-center justify-center">Loading...</div>
-              ) : error ? (
-                <div className="h-[300px] flex items-center justify-center">
-                  <div className="flex flex-col items-center text-center gap-2">
-                    <AlertTriangle className="h-8 w-8 text-amber-600" />
-                    <p>There was an error loading your metrics</p>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => window.location.reload()}
-                      className="mt-2"
-                    >
-                      Try Again
-                    </Button>
-                  </div>
-                </div>
-              ) : healthMetrics.length > 0 ? (
-                <div className="h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="heartRate" stroke="#f43f5e" name="Heart Rate" />
-                      <Line type="monotone" dataKey="systolicBP" stroke="#3b82f6" name="Systolic BP" />
-                      <Line type="monotone" dataKey="diastolicBP" stroke="#10b981" name="Diastolic BP" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center">
-                  <p>No health metrics available. Add your first reading to see trends.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {/* Recent Readings */}
+            {healthMetrics.length > 0 && (
+              <motion.div
+                variants={slideInLeft}
+                whileHover={cardHover}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Readings</CardTitle>
+                    <CardDescription>Your last 10 health measurements</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="p-2 text-left">Date</th>
+                            <th className="p-2 text-left">Heart Rate (BPM)</th>
+                            <th className="p-2 text-left">Blood Pressure (mmHg)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {healthMetrics.slice(0, 10).map((metric) => (
+                            <tr key={metric.id} className="border-b">
+                              <td className="p-2">{formatDate(metric.created_at)}</td>
+                              <td className="p-2">{metric.heart_rate}</td>
+                              <td className="p-2">{metric.systolic_bp}/{metric.diastolic_bp}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </motion.div>
 
-          {healthMetrics.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Readings</CardTitle>
-                <CardDescription>Your last 10 health measurements</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-muted">
-                        <th className="p-2 text-left">Date</th>
-                        <th className="p-2 text-left">Heart Rate (BPM)</th>
-                        <th className="p-2 text-left">Blood Pressure (mmHg)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {healthMetrics.slice(0, 10).map((metric) => (
-                        <tr key={metric.id} className="border-b">
-                          <td className="p-2">{formatDate(metric.created_at)}</td>
-                          <td className="p-2">{metric.heart_rate}</td>
-                          <td className="p-2">{metric.systolic_bp}/{metric.diastolic_bp}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right Sidebar - 4 columns */}
-        <div className="md:col-span-4 space-y-6">
-          {/* Health Insights Component */}
-          <HealthInsights latestMetric={healthMetrics[0]} />
-          
-          {/* Notifications Component */}
-          <NotificationCenter />
+          {/* Right Sidebar */}
+          <motion.div
+            variants={slideInRight}
+            initial="initial"
+            animate="animate"
+            className="md:col-span-4 space-y-6"
+          >
+            <motion.div whileHover={cardHover}>
+              <HealthInsights latestMetric={healthMetrics[0]} />
+            </motion.div>
+            
+            <motion.div whileHover={cardHover}>
+              <NotificationCenter />
+            </motion.div>
+          </motion.div>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 };
 

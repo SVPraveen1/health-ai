@@ -69,6 +69,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'appointment_reminder' | 'health_alert' | 'system'
+          content: string
+          scheduled_for: string
+          status: 'pending' | 'sent' | 'read'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'appointment_reminder' | 'health_alert' | 'system'
+          content: string
+          scheduled_for: string
+          status: 'pending' | 'sent' | 'read'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'appointment_reminder' | 'health_alert' | 'system'
+          content?: string
+          scheduled_for?: string
+          status?: 'pending' | 'sent' | 'read'
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -96,7 +126,7 @@ export type Tables<
   }
     ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
   ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {

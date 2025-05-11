@@ -6,6 +6,7 @@ import { toast } from '@/components/ui/use-toast';
 import { User } from '@supabase/supabase-js';
 
 type AuthUser = {
+  user_metadata: any;
   id: string;
   email: string | undefined;
 };

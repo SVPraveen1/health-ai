@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { cn } from '@/lib/utils';
 
 interface Notification {
   id: string;
@@ -58,7 +59,7 @@ export const NotificationBadge = () => {
   }, [user]);
 
   return count > 0 ? (
-    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0">
+    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500/90 hover:bg-red-500">
       {count}
     </Badge>
   ) : null;
@@ -68,6 +69,25 @@ export const NotificationCenter = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  const markAsRead = async (id: string) => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('notifications')
+        .update({ status: 'read' })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      // Update local state
+      setNotifications(notifications.map(n =>
+        n.id === id ? { ...n, status: 'read' } : n
+      ));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -103,9 +123,22 @@ export const NotificationCenter = () => {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`
         },
-        (payload: any) => {
-          if (payload.eventType === 'INSERT') {
-            setNotifications(prev => [payload.new as Notification, ...prev]);
+        (payload) => {
+          // Optimistically update the UI
+          switch (payload.eventType) {
+            case 'INSERT':
+              setNotifications(prev => [payload.new as Notification, ...prev]);
+              break;
+            case 'UPDATE':
+              setNotifications(prev =>
+                prev.map(n => n.id === payload.new.id ? payload.new as Notification : n)
+              );
+              break;
+            case 'DELETE':
+              setNotifications(prev =>
+                prev.filter(n => n.id !== payload.old.id)
+              );
+              break;
           }
         }
       )
@@ -116,63 +149,21 @@ export const NotificationCenter = () => {
     };
   }, [user]);
 
-  const markAsRead = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ status: 'read' })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === id ? { ...notif, status: 'read' } : notif
-        )
-      );
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'appointment_reminder':
-        return <Calendar className="h-4 w-4 text-blue-500" />;
-      case 'health_alert':
-        return <Bell className="h-4 w-4 text-red-500" />;
-      default:
-        return <Bell className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getTimeAgo = (date: string) => {
-    const now = new Date();
-    const then = new Date(date);
-    const diffInSeconds = Math.floor((now.getTime() - then.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return 'just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return format(then, 'MMM d');
-  };
-
   if (loading) {
     return (
-      <Card>
+      <Card className="min-w-[350px] bg-card/50 backdrop-blur border-border/50">
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle>
+            <div className="flex items-center space-x-2">
+              <Bell className="h-5 w-5" />
+              <span>Notifications</span>
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 animate-pulse">
-                <div className="h-8 w-8 rounded-full bg-muted"></div>
-                <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-muted rounded w-3/4"></div>
-                  <div className="h-3 bg-muted rounded w-1/2"></div>
-                </div>
-              </div>
+              <div key={i} className="h-16 bg-muted/50 rounded-md animate-pulse" />
             ))}
           </div>
         </CardContent>
@@ -181,60 +172,66 @@ export const NotificationCenter = () => {
   }
 
   return (
-    <Card>
+    <Card className="min-w-[350px] bg-card/50 backdrop-blur border-border/50">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Notifications
-          {notifications.length > 0 && (
-            <Badge>
-              {notifications.filter(n => n.status === 'sent').length} new
-            </Badge>
-          )}
+        <CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Bell className="h-5 w-5" />
+              <span>Notifications</span>
+            </div>
+            {notifications.length > 0 && (
+              <Badge variant="secondary" className="bg-secondary/50">
+                {notifications.length}
+              </Badge>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {notifications.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            No notifications yet
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {notifications.map((notification) => (
+        <div className="space-y-4">
+          {notifications.length === 0 ? (
+            <p className="text-center text-muted-foreground">No notifications</p>
+          ) : (
+            notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`flex items-start gap-4 p-3 rounded-lg transition-colors ${
-                  notification.status === 'sent'
-                    ? 'bg-muted/50'
-                    : ''
-                }`}
+                className={cn(
+                  "flex items-start space-x-4 p-4 rounded-lg transition-colors",
+                  "bg-muted/30 hover:bg-muted/50 backdrop-blur",
+                  notification.status === 'read' ? 'opacity-75' : ''
+                )}
               >
-                <div className="mt-1">
-                  {getNotificationIcon(notification.type)}
+                <div className="flex-shrink-0">
+                  {notification.type === 'appointment_reminder' && (
+                    <Calendar className="h-5 w-5 text-blue-500" />
+                  )}
+                  {notification.type === 'health_alert' && (
+                    <Bell className="h-5 w-5 text-red-500" />
+                  )}
+                  {notification.type === 'system' && (
+                    <Bell className="h-5 w-5 text-yellow-500" />
+                  )}
                 </div>
                 <div className="flex-1 space-y-1">
-                  <p className={`text-sm ${
-                    notification.status === 'sent'
-                      ? 'font-medium'
-                      : ''
-                  }`}>
-                    {notification.content}
-                  </p>
+                  <p className="text-sm">{notification.content}</p>
                   <p className="text-xs text-muted-foreground">
-                    {getTimeAgo(notification.created_at)}
+                    {format(new Date(notification.created_at), 'PPp')}
                   </p>
                 </div>
-                {notification.status === 'sent' && (
+                {notification.status !== 'read' && (
                   <button
                     onClick={() => markAsRead(notification.id)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex-shrink-0 rounded-full p-1 hover:bg-muted"
+                    title="Mark as read"
                   >
-                    <Check className="h-4 w-4" />
+                    <Check className="h-4 w-4 text-muted-foreground" />
                   </button>
                 )}
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </CardContent>
     </Card>
   );
