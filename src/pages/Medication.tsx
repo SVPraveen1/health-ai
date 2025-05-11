@@ -38,10 +38,7 @@ const Medication = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [showAddMed, setShowAddMed] = useState(false);
-  
-  const [newMedication, setNewMedication] = useState({
+  const [open, setOpen] = useState(false);  const [newMedication, setNewMedication] = useState({
     name: "",
     dosage: "",
     frequency: "Once daily",
@@ -270,12 +267,99 @@ const Medication = () => {
             <div>
               <h1 className="text-3xl font-bold mb-2">Medication Management</h1>
               <p className="text-muted-foreground">Track and manage your medications</p>
-            </div>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Button onClick={() => setShowAddMed(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Medication
-              </Button>
+            </div>            <motion.div whileHover={{ scale: 1.05 }}>
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Medication
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Medication</DialogTitle>
+                    <DialogDescription>
+                      Enter the details of your medication to set up reminders.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label htmlFor="name" className="text-sm font-medium">
+                        Medication Name
+                      </label>
+                      <Input
+                        id="name"
+                        name="name" 
+                        placeholder="e.g., Lisinopril"
+                        value={newMedication.name}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="dosage" className="text-sm font-medium">
+                        Dosage
+                      </label>
+                      <Input 
+                        id="dosage"
+                        name="dosage" 
+                        placeholder="e.g., 10mg"
+                        value={newMedication.dosage}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="frequency" className="text-sm font-medium">
+                        Frequency
+                      </label>
+                      <Select 
+                        value={newMedication.frequency}
+                        onValueChange={handleFrequencyChange}
+                      >
+                        <SelectTrigger id="frequency">
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FREQUENCY_OPTIONS.map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="time" className="text-sm font-medium">
+                        Time(s)
+                      </label>
+                      <Input 
+                        id="time"
+                        name="time" 
+                        type="time"
+                        value={newMedication.time}
+                        onChange={handleInputChange}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        For multiple times, use format: 08:00, 20:00
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button 
+                      onClick={addMedicationHandler} 
+                      disabled={submitting || !newMedication.name || !newMedication.dosage}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        "Add Medication"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </motion.div>
           </motion.div>
 
@@ -371,111 +455,7 @@ const Medication = () => {
               </Card>
             </motion.div>
           </motion.div>
-        </motion.div>
-
-        {/* Add Medication Dialog */}
-        <AnimatePresence>
-          {showAddMed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    Add Medication
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add New Medication</DialogTitle>
-                    <DialogDescription>
-                      Enter the details of your medication to set up reminders.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <label htmlFor="name" className="text-sm font-medium">
-                        Medication Name
-                      </label>
-                      <Input
-                        id="name"
-                        name="name" 
-                        placeholder="e.g., Lisinopril"
-                        value={newMedication.name}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="dosage" className="text-sm font-medium">
-                        Dosage
-                      </label>
-                      <Input 
-                        id="dosage"
-                        name="dosage" 
-                        placeholder="e.g., 10mg"
-                        value={newMedication.dosage}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="frequency" className="text-sm font-medium">
-                        Frequency
-                      </label>
-                      <Select 
-                        value={newMedication.frequency}
-                        onValueChange={handleFrequencyChange}
-                      >
-                        <SelectTrigger id="frequency">
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {FREQUENCY_OPTIONS.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="time" className="text-sm font-medium">
-                        Time(s)
-                      </label>
-                      <Input 
-                        id="time"
-                        name="time" 
-                        type="time"
-                        value={newMedication.time}
-                        onChange={handleInputChange}
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        For multiple times, use format: 08:00, 20:00
-                      </p>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button 
-                      onClick={addMedicationHandler} 
-                      disabled={submitting || !newMedication.name || !newMedication.dosage}
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Adding...
-                        </>
-                      ) : (
-                        "Add Medication"
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </motion.div>        {/* Add Medication Dialog is now moved to the top button */}
       </div>
     </PageWrapper>
   );

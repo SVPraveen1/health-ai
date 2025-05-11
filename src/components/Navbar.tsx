@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Menu, X, User, LogOut, Brain, MessageSquare, Activity, BarChart2 } from "lucide-react";
+import Profile from "./Profile";
 import { motion, AnimatePresence } from "framer-motion";
 import { slideInRight, listItem } from "@/lib/animations";
 
@@ -163,16 +164,7 @@ const Navbar = () => {
           transition={{ duration: 0.5 }}
           className="hidden md:flex md:items-center md:gap-4"
         >
-          {user ? (
-            <div className="flex items-center gap-4">
-              {/* <div className="text-sm text-muted-foreground">
-                {user.email}
-              </div> */}
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </Button>
-            </div>
+          {user ? (            <Profile />
           ) : (
             <div className="flex items-center gap-4">
               <Link to="/login">

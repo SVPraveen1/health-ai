@@ -4,6 +4,7 @@ export interface HealthMetric {
   heart_rate: number;
   systolic_bp: number;
   diastolic_bp: number;
+  water_intake: number;
   created_at: string;
 }
 

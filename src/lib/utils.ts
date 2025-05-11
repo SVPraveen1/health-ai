@@ -33,6 +33,13 @@ export const validateHealthMetrics = (metrics: any): ValidationResult => {
     }
   }
 
+  // Water intake validation
+  if (metrics.water_intake) {
+    if (metrics.water_intake < 0 || metrics.water_intake > 10000) {
+      errors.push("Water intake should be between 0 and 10000 ml");
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors

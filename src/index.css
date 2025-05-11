@@ -1,4 +1,4 @@
-@import './styles/dark-theme.css';
+@import './styles/enhanced-dark-theme.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
